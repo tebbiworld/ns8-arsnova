@@ -34,6 +34,8 @@ units=(
 )
 systemctl --user enable "${units[@]}"
 
-# (Re)start the stack so configuration changes are applied. Restarting the main
-# unit cascades to every bound service container.
-systemctl --user restart arsnova.service
+# (Re)start the whole stack so configuration changes are applied. The units are
+# restarted as a set (systemd orders them by their After= dependencies); the
+# network unit only Wants its containers, so it is restarted explicitly here
+# rather than relying on a cascade.
+systemctl --user restart "${units[@]}"

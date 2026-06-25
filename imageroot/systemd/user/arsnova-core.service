@@ -24,8 +24,8 @@ Restart=always
 TimeoutStartSec=300
 TimeoutStopSec=70
 ExecStartPre=/bin/rm -f %t/arsnova-core.pid %t/arsnova-core.ctr-id
-# Make sure the SMTP env file exists before it is referenced below.
-ExecStartPre=/bin/touch %S/state/smarthost.env
+# Make sure the optional env files exist before they are referenced below.
+ExecStartPre=/bin/touch %S/state/smarthost.env %S/state/admin.env
 ExecStart=/usr/bin/podman run \
     --conmon-pidfile %t/arsnova-core.pid \
     --cidfile %t/arsnova-core.ctr-id \
@@ -33,6 +33,7 @@ ExecStart=/usr/bin/podman run \
     --network arsnova \
     --replace -d --name arsnova-backend-core \
     --env-file %S/state/smarthost.env \
+    --env-file %S/state/admin.env \
     --env SYSTEM_API_PROXYPATH=/api \
     --env SYSTEM_ROOT_URL=${ARSNOVA_ROOT_URL} \
     --env SYSTEM_SOCKETIO_BINDADDRESS=0.0.0.0 \
@@ -48,7 +49,6 @@ ExecStart=/usr/bin/podman run \
     --env SYSTEM_FORMATTING_SERVICE_HOST_URL=http://arsnova-formatting-service:3000 \
     --env SECURITY_JWT_SECRET=${JWT_SECRET} \
     --env SECURITY_JWT_SERVER_ID=arsnova.backend.v3:${TRAEFIK_HOST} \
-    --env SECURITY_ADMIN_ACCOUNTS_0=${ADMIN_ACCOUNT} \
     ${ARSNOVA_SERVER_CORE_IMAGE}
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-core.ctr-id -t 30
 ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-core.ctr-id

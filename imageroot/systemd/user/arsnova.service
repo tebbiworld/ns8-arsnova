@@ -17,9 +17,12 @@
 
 [Unit]
 Description=ARSnova network
-Requires=arsnova-couchdb.service arsnova-postgres-auth.service arsnova-postgres-comment.service arsnova-rabbitmq.service
-Requires=arsnova-authz.service arsnova-core.service arsnova-comments.service arsnova-websocket.service
-Requires=arsnova-formatting.service arsnova-web.service arsnova-gateway.service arsnova-proxy.service
+# Wants (not Requires): pulls the service containers up with the network, but a
+# single container crashing/restarting must NOT tear the whole stack down.
+# Each service unit has Restart=always and recovers on its own.
+Wants=arsnova-couchdb.service arsnova-postgres-auth.service arsnova-postgres-comment.service arsnova-rabbitmq.service
+Wants=arsnova-authz.service arsnova-core.service arsnova-comments.service arsnova-websocket.service
+Wants=arsnova-formatting.service arsnova-web.service arsnova-gateway.service arsnova-proxy.service
 Before=arsnova-couchdb.service arsnova-postgres-auth.service arsnova-postgres-comment.service arsnova-rabbitmq.service
 Before=arsnova-authz.service arsnova-core.service arsnova-comments.service arsnova-websocket.service
 Before=arsnova-formatting.service arsnova-web.service arsnova-gateway.service arsnova-proxy.service

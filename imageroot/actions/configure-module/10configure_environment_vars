@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+import os
 import sys
 import json
 
@@ -25,9 +26,22 @@ agent.set_env("TRAEFIK_HTTP2HTTPS", h2hs)
 scheme = "https" if (lets_encrypt or h2hs) else "http"
 agent.set_env("ARSNOVA_ROOT_URL", f"{scheme}://{host}")
 
-# Optional ARSnova administrator account (e-mail / loginId of a registered
-# user). Empty value disables the override.
-agent.set_env("ADMIN_ACCOUNT", (data.get("admin_email") or "").strip())
+# Optional ARSnova administrator account (loginId of a registered user).
+# security.admin-accounts is a list of objects (loginId + authProvider), NOT a
+# list of strings, so it is written to state/admin.env (loaded by the core
+# container) only when set -- passing an empty/bare value makes the core fail
+# to bind SecurityProperties and crash-loop. ADMIN_ACCOUNT is kept for display.
+admin_email = (data.get("admin_email") or "").strip()
+agent.set_env("ADMIN_ACCOUNT", admin_email)
+
+with open("admin.env.tmp", "w") as efp:
+    if admin_email:
+        # Registered (email/password) accounts use the ARSNOVA auth provider.
+        print(f"SECURITY_ADMIN_ACCOUNTS_0_LOGINID={admin_email}", file=efp)
+        print("SECURITY_ADMIN_ACCOUNTS_0_AUTHPROVIDER=ARSNOVA", file=efp)
+    else:
+        print("# no administrator account configured", file=efp)
+os.replace("admin.env.tmp", "admin.env")
 
 # Optional manual SMTP relay, used only when no cluster smarthost is available.
 # ARSnova's core supports a plain SMTP host only (port 25, no authentication),
