@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+import sys
+import json
+
+import agent
+
+data = json.load(sys.stdin)
+
+host = data.get("host")
+h2hs = data.get("http2https", True)
+lets_encrypt = data.get("lets_encrypt", False)
+
+agent.set_env("TRAEFIK_HOST", host)
+agent.set_env("TRAEFIK_HTTP2HTTPS", h2hs)
+
+# Public base URL used by the backend core for verification/reset mail links
+# and as the JWT server id host. Traefik terminates TLS, so the public scheme
+# is https whenever a certificate is requested or HTTP is redirected to HTTPS.
+scheme = "https" if (lets_encrypt or h2hs) else "http"
+agent.set_env("ARSNOVA_ROOT_URL", f"{scheme}://{host}")
+
+# Optional ARSnova administrator account (e-mail / loginId of a registered
+# user). Empty value disables the override.
+agent.set_env("ADMIN_ACCOUNT", (data.get("admin_email") or "").strip())
+
+# Optional manual SMTP relay, used only when no cluster smarthost is available.
+# ARSnova's core supports a plain SMTP host only (port 25, no authentication),
+# so just the host is wired through; see discover-smarthost.
+agent.set_env("SMTP_MANUAL_HOST", (data.get("smtp_host") or "").strip())
+agent.set_env("SMTP_MANUAL_FROM", (data.get("smtp_from") or "").strip())
+
+agent.dump_env()

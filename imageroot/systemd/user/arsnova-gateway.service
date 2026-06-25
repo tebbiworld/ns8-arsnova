@@ -1,0 +1,52 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# ARSnova HTTP gateway: the single API entry point that fans /api requests out
+# to core, websocket, comment, auth (room access) and formatting by DNS name.
+# Runs with Jetty's http-forwarded module so it honours the X-Forwarded-*
+# headers set by Traefik and the front proxy. Reachable inside the network as
+# "arsnova-http-gateway".
+
+[Unit]
+Description=ARSnova HTTP gateway
+BindsTo=arsnova.service
+After=arsnova.service arsnova-core.service arsnova-websocket.service arsnova-comments.service arsnova-authz.service arsnova-formatting.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStartSec=300
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/arsnova-gateway.pid %t/arsnova-gateway.ctr-id
+ExecStart=/usr/bin/podman run \
+    --conmon-pidfile %t/arsnova-gateway.pid \
+    --cidfile %t/arsnova-gateway.ctr-id \
+    --cgroups=no-conmon \
+    --network arsnova \
+    --replace -d --name arsnova-http-gateway \
+    --env SERVER_PORT=8080 \
+    --env ROUTING_ENDPOINTS_CORE=http://arsnova-backend-core:8080 \
+    --env ROUTING_ENDPOINTS_WS_GATEWAY=http://arsnova-ws-gateway:8080 \
+    --env ROUTING_ENDPOINTS_COMMENT_SERVICE=http://arsnova-comment-service:8080 \
+    --env ROUTING_ENDPOINTS_ROOMACCESS_SERVICE=http://arsnova-auth-service:8080 \
+    --env ROUTING_ENDPOINTS_FORMATTING_SERVICE=http://arsnova-formatting-service:3000 \
+    --env HTTP_CLIENT_AUTH_SERVICE=http://arsnova-auth-service:8080 \
+    --env HTTP_CLIENT_CORE=http://arsnova-backend-core:8080 \
+    --env HTTP_CLIENT_WS_GATEWAY=http://arsnova-ws-gateway:8080 \
+    --env HTTP_CLIENT_COMMENT_SERVICE=http://arsnova-comment-service:8080 \
+    --env SECURITY_JWT_PUBLIC_SECRET=${JWT_SECRET} \
+    --env SECURITY_JWT_INTERNAL_SECRET=${JWT_SECRET} \
+    --env SECURITY_JWT_SERVER_ID=arsnova.backend.v3:${TRAEFIK_HOST} \
+    ${ARSNOVA_SERVER_GATEWAY_IMAGE} /jetty/start.jar --module=http-forwarded
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-gateway.ctr-id -t 30
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-gateway.ctr-id
+PIDFile=%t/arsnova-gateway.pid
+Type=forking
+SyslogIdentifier=%u
+
+[Install]
+WantedBy=default.target

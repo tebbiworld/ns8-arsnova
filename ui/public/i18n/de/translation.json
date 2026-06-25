@@ -1,0 +1,75 @@
+{
+    "common": {
+        "required": "Erforderlich",
+        "work_in_progress": "In Bearbeitung",
+        "processing": "Verarbeitung läuft..."
+    },
+    "status": {
+        "title": "Status",
+        "app_instance": "App-Instanz",
+        "services": "Dienst | Dienste",
+        "app_images": "App-Abbild | App-Abbilder",
+        "app_volumes": "App-Volume | App-Volumes",
+        "installation_node": "Knoten der Installation",
+        "node": "Knoten",
+        "name": "Name",
+        "size": "Größe",
+        "created": "Erstellt",
+        "mount": "Mount",
+        "no_services": "Keine Dienste",
+        "no_images": "Keine Abbilder",
+        "no_volumes": "Keine Volumes"
+    },
+    "settings": {
+        "title": "Einstellungen",
+        "configure_instance": "{instance} konfigurieren",
+        "save": "Speichern",
+        "host": "Hostname (FQDN)",
+        "host_placeholder": "arsnova.example.org",
+        "host_helper": "Öffentlicher Hostname, unter dem ARSnova erreichbar ist. Muss auf diesen Server auflösen.",
+        "lets_encrypt": "Let's-Encrypt-Zertifikat anfordern",
+        "http2https": "HTTP auf HTTPS umleiten",
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert",
+        "admin_email": "Administrator-Konto (optional)",
+        "admin_email_placeholder": "admin@example.org",
+        "admin_email_helper": "E-Mail eines bereits registrierten ARSnova-Benutzers, der Administratorrechte erhalten soll. Konto zuerst registrieren, dann hier eintragen.",
+        "mail_section": "E-Mail (optional)",
+        "smtp_host": "SMTP-Relay-Host",
+        "smtp_host_helper": "Wird nur verwendet, wenn kein Cluster-Smarthost konfiguriert ist. ARSnova unterstützt nur ein einfaches Relay auf Port 25 ohne Authentifizierung.",
+        "smtp_from": "Absenderadresse",
+        "smtp_from_placeholder": "arsnova@example.org",
+        "public_url": "Öffentliche URL",
+        "public_url_desc": "ARSnova ist erreichbar unter {url}. Benutzer registrieren sich selbst; die erste Verifizierungs-E-Mail muss zugestellt werden (oder der Code wird aus den Logs gelesen, wenn kein Relay gesetzt ist).",
+        "https_hint": "Hinter einem knotenübergreifenden HTTPS-Gateway oder TLS-Terminator \"HTTP auf HTTPS umleiten\" aktivieren, damit Links und Tokens das https-Schema verwenden.",
+        "domain_already_used_in_traefik": "Dieser Hostname wird bereits von einer anderen Instanz verwendet."
+    },
+    "about": {
+        "title": "Über"
+    },
+    "task": {
+        "cannot_create_task": "Aufgabe {action} kann nicht erstellt werden"
+    },
+    "action": {
+        "get-status": "Status abrufen",
+        "get-configuration": "Konfiguration abrufen",
+        "configure-module": "Modul konfigurieren",
+        "get-module-info": "Modul-Info abrufen",
+        "get-name": "Name abrufen",
+        "list-backup-repositories": "Backup-Speicherorte auflisten",
+        "list-backups": "Backups auflisten",
+        "list-installed-modules": "Installierte Module auflisten"
+    },
+    "error": {
+        "error": "Fehler",
+        "generic_error": "Etwas ist schief gegangen",
+        "validation_error": "Fehler bei der Validierung",
+        "network_error": "Netzwerk-Fehler",
+        "network_timeout": "Netzwerk-Zeitüberschreitung",
+        "401": "Authentifizierung fehlerhaft",
+        "403": "Vorgang nicht autorisiert",
+        "404": "Ressource nicht gefunden",
+        "cannot_retrieve_module_info": "Fehler beim Abruf der Modul-Info",
+        "cannot_retrieve_installed_modules": "Fehler beim Abruf installierter Module"
+    }
+}

@@ -1,0 +1,49 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Configure arsnova",
+    "$id": "http://nethserver.org/json-schema/task/input/arsnova/configure-module",
+    "description": "Configure the ARSnova module",
+    "examples": [
+        {
+            "host": "arsnova.example.org",
+            "http2https": true,
+            "lets_encrypt": true,
+            "admin_email": "admin@example.org"
+        }
+    ],
+    "type": "object",
+    "required": ["host"],
+    "properties": {
+        "host": {
+            "type": "string",
+            "description": "Fully qualified domain name for ARSnova, like 'arsnova.example.org'",
+            "format": "hostname",
+            "pattern": "\\."
+        },
+        "lets_encrypt": {
+            "type": "boolean",
+            "title": "Let's Encrypt certificate",
+            "description": "Request a valid Let's Encrypt certificate for the host name."
+        },
+        "http2https": {
+            "type": "boolean",
+            "title": "HTTP to HTTPS redirection",
+            "description": "Redirect all HTTP requests to HTTPS."
+        },
+        "admin_email": {
+            "type": "string",
+            "title": "Administrator account",
+            "description": "E-mail address of a registered ARSnova user that should be granted administrator rights. Leave empty to keep everyone a regular user."
+        },
+        "smtp_host": {
+            "type": "string",
+            "title": "Manual SMTP relay host",
+            "description": "Fallback plain SMTP relay (port 25, no authentication) used only when no cluster smarthost is configured. Leave empty to rely on the cluster smarthost."
+        },
+        "smtp_from": {
+            "type": "string",
+            "title": "Mail sender address",
+            "description": "Sender address for ARSnova e-mails. Defaults to arsnova@<domain>."
+        }
+    }
+}

@@ -1,0 +1,46 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# ARSnova websocket gateway: relays live updates between browsers (STOMP over
+# WebSocket) and RabbitMQ. Reachable inside the network as "arsnova-ws-gateway".
+
+[Unit]
+Description=ARSnova websocket gateway
+BindsTo=arsnova.service
+After=arsnova.service arsnova-rabbitmq.service arsnova-authz.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStartSec=300
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/arsnova-websocket.pid %t/arsnova-websocket.ctr-id
+ExecStart=/usr/bin/podman run \
+    --conmon-pidfile %t/arsnova-websocket.pid \
+    --cidfile %t/arsnova-websocket.ctr-id \
+    --cgroups=no-conmon \
+    --network arsnova \
+    --replace -d --name arsnova-ws-gateway \
+    --env SERVER_PORT=8080 \
+    --env STOMP_RELAY_HOST=rabbitmq \
+    --env STOMP_RELAY_USER=guest \
+    --env STOMP_RELAY_PASSWORD=guest \
+    --env RABBITMQ_HOST=rabbitmq \
+    --env RABBITMQ_USERNAME=guest \
+    --env RABBITMQ_PASSWORD=guest \
+    --env HTTP_CLIENT_AUTH_SERVICE=http://arsnova-auth-service:8080 \
+    --env SECURITY_JWT_SECRET=${JWT_SECRET} \
+    --env SECURITY_JWT_SERVER_ID=arsnova.backend.v3:${TRAEFIK_HOST} \
+    ${ARSNOVA_SERVER_WEBSOCKET_IMAGE} /jetty/start.jar --module=http-forwarded
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-websocket.ctr-id -t 30
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-websocket.ctr-id
+PIDFile=%t/arsnova-websocket.pid
+Type=forking
+SyslogIdentifier=%u
+
+[Install]
+WantedBy=default.target

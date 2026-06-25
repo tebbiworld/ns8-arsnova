@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+import os
+import sys
+import json
+
+import agent
+
+config = {}
+
+config["host"] = os.getenv("TRAEFIK_HOST", "")
+config["http2https"] = os.getenv("TRAEFIK_HTTP2HTTPS") == "True"
+
+route = agent.get_route(os.environ["MODULE_ID"])
+config["lets_encrypt"] = route.get("lets_encrypt", False)
+
+config["public_url"] = os.getenv("ARSNOVA_ROOT_URL", "")
+config["admin_email"] = os.getenv("ADMIN_ACCOUNT", "")
+config["smtp_host"] = os.getenv("SMTP_MANUAL_HOST", "")
+config["smtp_from"] = os.getenv("SMTP_MANUAL_FROM", "")
+
+json.dump(config, fp=sys.stdout)

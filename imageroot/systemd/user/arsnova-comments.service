@@ -1,0 +1,46 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# ARSnova comment service (Q&A / audience questions). Backed by its own
+# PostgreSQL database. Reachable inside the network as "arsnova-comment-service".
+
+[Unit]
+Description=ARSnova comment service
+BindsTo=arsnova.service
+After=arsnova.service arsnova-postgres-comment.service arsnova-rabbitmq.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStartSec=300
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/arsnova-comments.pid %t/arsnova-comments.ctr-id
+ExecStart=/usr/bin/podman run \
+    --conmon-pidfile %t/arsnova-comments.pid \
+    --cidfile %t/arsnova-comments.ctr-id \
+    --cgroups=no-conmon \
+    --network arsnova \
+    --replace -d --name arsnova-comment-service \
+    --env SERVER_PORT=8080 \
+    --env SPRING_DATASOURCE_URL=jdbc:postgresql://postgresql_comment:5432/arsnovacomment \
+    --env SPRING_DATASOURCE_USERNAME=${PG_COMMENT_USER} \
+    --env SPRING_DATASOURCE_PASSWORD=${PG_COMMENT_PASSWORD} \
+    --env SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+    --env SPRING_RABBITMQ_HOST=rabbitmq \
+    --env SPRING_RABBITMQ_USERNAME=guest \
+    --env SPRING_RABBITMQ_PASSWORD=guest \
+    --env SECURITY_JWT_SECRET=${JWT_SECRET} \
+    --env SECURITY_JWT_SERVER_ID=arsnova.backend.v3:${TRAEFIK_HOST} \
+    ${ARSNOVA_SERVER_COMMENTS_IMAGE} /jetty/start.jar --module=http-forwarded
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-comments.ctr-id -t 30
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-comments.ctr-id
+PIDFile=%t/arsnova-comments.pid
+Type=forking
+SyslogIdentifier=%u
+
+[Install]
+WantedBy=default.target

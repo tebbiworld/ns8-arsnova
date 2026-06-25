@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "get-configuration output",
+    "$id": "http://schema.nethserver.org/arsnova/get-configuration-output.json",
+    "description": "Get arsnova configuration",
+    "type": "object",
+    "properties": {
+        "host": { "type": "string" },
+        "http2https": { "type": "boolean" },
+        "lets_encrypt": { "type": "boolean" },
+        "public_url": { "type": "string" },
+        "admin_email": { "type": "string" },
+        "smtp_host": { "type": "string" },
+        "smtp_from": { "type": "string" }
+    }
+}

@@ -1,0 +1,39 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+set -e
+
+# Redirect any output to the journal (stderr)
+exec 1>&2
+
+# Ensure the SMTP env file exists before the core unit references it
+touch smarthost.env
+
+# Refresh mail settings from the cluster smarthost (or the manual relay)
+runagent discover-smarthost || true
+
+# Enable the whole stack. The main unit owns the podman network; the service
+# units are bound to it and started in dependency order.
+units=(
+    arsnova.service
+    arsnova-couchdb.service
+    arsnova-postgres-auth.service
+    arsnova-postgres-comment.service
+    arsnova-rabbitmq.service
+    arsnova-authz.service
+    arsnova-core.service
+    arsnova-comments.service
+    arsnova-websocket.service
+    arsnova-formatting.service
+    arsnova-web.service
+    arsnova-gateway.service
+    arsnova-proxy.service
+)
+systemctl --user enable "${units[@]}"
+
+# (Re)start the stack so configuration changes are applied. Restarting the main
+# unit cascades to every bound service container.
+systemctl --user restart arsnova.service

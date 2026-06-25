@@ -1,0 +1,40 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# PostgreSQL database for the authentication service (authz).
+# Reachable inside the arsnova network as "postgresql_auth".
+
+[Unit]
+Description=ARSnova auth database
+BindsTo=arsnova.service
+After=arsnova.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStartSec=120
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/arsnova-postgres-auth.pid %t/arsnova-postgres-auth.ctr-id
+ExecStart=/usr/bin/podman run \
+    --conmon-pidfile %t/arsnova-postgres-auth.pid \
+    --cidfile %t/arsnova-postgres-auth.ctr-id \
+    --cgroups=no-conmon \
+    --network arsnova \
+    --replace -d --name postgresql_auth \
+    --volume arsnova-postgres-auth:/var/lib/postgresql/data:Z \
+    --env POSTGRES_DB=arsnovaauth \
+    --env POSTGRES_USER=${PG_AUTH_USER} \
+    --env POSTGRES_PASSWORD=${PG_AUTH_PASSWORD} \
+    ${POSTGRES_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-postgres-auth.ctr-id -t 60
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-postgres-auth.ctr-id
+PIDFile=%t/arsnova-postgres-auth.pid
+Type=forking
+SyslogIdentifier=%u
+
+[Install]
+WantedBy=default.target

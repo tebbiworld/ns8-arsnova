@@ -1,0 +1,41 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# RabbitMQ with the STOMP plugin: message broker between the backend core and
+# the websocket gateway (live updates). Reachable inside the arsnova network as
+# "rabbitmq". The particify/rabbitmq-stomp image ships a configuration that
+# allows the default guest user over the network, so credentials stay internal
+# to the (unpublished) arsnova network.
+
+[Unit]
+Description=ARSnova RabbitMQ broker
+BindsTo=arsnova.service
+After=arsnova.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStartSec=120
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/arsnova-rabbitmq.pid %t/arsnova-rabbitmq.ctr-id
+ExecStart=/usr/bin/podman run \
+    --conmon-pidfile %t/arsnova-rabbitmq.pid \
+    --cidfile %t/arsnova-rabbitmq.ctr-id \
+    --cgroups=no-conmon \
+    --network arsnova \
+    --replace -d --name rabbitmq \
+    --volume arsnova-rabbitmq:/var/lib/rabbitmq:Z \
+    --env RABBITMQ_NODENAME=rabbit@localhost \
+    ${RABBITMQ_STOMP_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-rabbitmq.ctr-id -t 60
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-rabbitmq.ctr-id
+PIDFile=%t/arsnova-rabbitmq.pid
+Type=forking
+SyslogIdentifier=%u
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# create-module runs once, right after the module user is created. Generate the
+# long-lived secrets shared across the ARSnova microservices and persist them
+# in the module environment for the systemd units to consume.
+
+import secrets
+
+import agent
+
+# Shared JWT signing secret. Every service that issues or validates tokens
+# (core, authz, gateway, websocket, comment) must use the same value.
+agent.set_env("JWT_SECRET", secrets.token_hex(32))
+
+# CouchDB administrator (created on first start).
+agent.set_env("COUCHDB_USER", "arsnova")
+agent.set_env("COUCHDB_PASSWORD", secrets.token_hex(16))
+
+# PostgreSQL databases for the auth and comment services. The database names
+# are fixed (referenced in the JDBC URLs); only the passwords are randomised.
+agent.set_env("PG_AUTH_USER", "arsnovaauth")
+agent.set_env("PG_AUTH_PASSWORD", secrets.token_hex(16))
+agent.set_env("PG_COMMENT_USER", "arsnovacomment")
+agent.set_env("PG_COMMENT_PASSWORD", secrets.token_hex(16))
+
+# Optional ARSnova administrator account (a registered user's e-mail address).
+# Empty until set from the Settings page; an empty value matches no user.
+agent.set_env("ADMIN_ACCOUNT", "")
+
+# Persist the environment for the systemd units.
+agent.dump_env()

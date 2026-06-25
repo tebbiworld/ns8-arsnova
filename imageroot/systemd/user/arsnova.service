@@ -1,0 +1,41 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Main unit for the ARSnova/Particify module.
+#
+# Unlike the single-pod modules, ARSnova is a microservice stack: six of its
+# services listen on port 8080 and the services find each other by DNS name
+# (couchdb, rabbitmq, arsnova-backend-core, ...). They therefore cannot share a
+# single pod network namespace. Instead this unit creates a dedicated rootless
+# Podman network with built-in DNS (netavark/aardvark) and every service runs
+# as its own container joined to that network under the name its peers expect.
+#
+# Only the front reverse proxy (arsnova-proxy) publishes a port to the host;
+# everything else is reachable only inside the arsnova network.
+
+[Unit]
+Description=ARSnova network
+Requires=arsnova-couchdb.service arsnova-postgres-auth.service arsnova-postgres-comment.service arsnova-rabbitmq.service
+Requires=arsnova-authz.service arsnova-core.service arsnova-comments.service arsnova-websocket.service
+Requires=arsnova-formatting.service arsnova-web.service arsnova-gateway.service arsnova-proxy.service
+Before=arsnova-couchdb.service arsnova-postgres-auth.service arsnova-postgres-comment.service arsnova-rabbitmq.service
+Before=arsnova-authz.service arsnova-core.service arsnova-comments.service arsnova-websocket.service
+Before=arsnova-formatting.service arsnova-web.service arsnova-gateway.service arsnova-proxy.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Type=oneshot
+RemainAfterExit=yes
+# Create the network if it does not exist yet. It is intentionally left in
+# place across restarts (only destroy-module removes it) so a simple
+# "systemctl restart arsnova.service" re-applies configuration to every
+# container without tearing down and recreating the network.
+ExecStart=/bin/bash -c '/usr/bin/podman network exists arsnova || /usr/bin/podman network create arsnova'
+ExecStop=/bin/true
+
+[Install]
+WantedBy=default.target

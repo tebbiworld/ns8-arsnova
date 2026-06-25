@@ -1,0 +1,46 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# ARSnova front reverse proxy (nginx). This is the ONLY container published to
+# the host. It serves the web client at "/", forwards "/api/" to the HTTP
+# gateway and "/api/ws/" to the websocket gateway (with WebSocket upgrade
+# headers). Traefik routes the public host name to the port published here and
+# transparently forwards the WebSocket upgrade.
+#
+# net.ipv4.ip_unprivileged_port_start=0 lets the in-container nginx bind port 80
+# even if it drops privileges.
+
+[Unit]
+Description=ARSnova proxy
+BindsTo=arsnova.service
+After=arsnova.service arsnova-web.service arsnova-gateway.service arsnova-websocket.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStartSec=120
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/arsnova-proxy.pid %t/arsnova-proxy.ctr-id
+ExecStart=/usr/bin/podman run \
+    --conmon-pidfile %t/arsnova-proxy.pid \
+    --cidfile %t/arsnova-proxy.ctr-id \
+    --cgroups=no-conmon \
+    --network arsnova \
+    --replace -d --name arsnova-proxy \
+    --publish 127.0.0.1:${TCP_PORT}:80 \
+    --sysctl net.ipv4.ip_unprivileged_port_start=0 \
+    --env ARSNOVA_HOSTNAME=${TRAEFIK_HOST} \
+    --env CSP_FRAME_ANCESTORS='self' \
+    ${ARSNOVA_PROXY_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-proxy.ctr-id -t 30
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-proxy.ctr-id
+PIDFile=%t/arsnova-proxy.pid
+Type=forking
+SyslogIdentifier=%u
+
+[Install]
+WantedBy=default.target

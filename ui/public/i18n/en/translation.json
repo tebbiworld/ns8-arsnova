@@ -1,0 +1,75 @@
+{
+    "common": {
+        "required": "Required",
+        "work_in_progress": "Work in progress",
+        "processing": "Processing..."
+    },
+    "status": {
+        "title": "Status",
+        "app_instance": "App instance",
+        "services": "Service | Services",
+        "app_images": "App image | App images",
+        "app_volumes": "App volume | App volumes",
+        "installation_node": "Installation node",
+        "node": "Node",
+        "name": "Name",
+        "size": "Size",
+        "created": "Created",
+        "mount": "Mount",
+        "no_services": "No services",
+        "no_images": "No images",
+        "no_volumes": "No volumes"
+    },
+    "settings": {
+        "title": "Settings",
+        "configure_instance": "Configure {instance}",
+        "save": "Save",
+        "host": "Host name (FQDN)",
+        "host_placeholder": "arsnova.example.org",
+        "host_helper": "Public host name where ARSnova is reachable. It must resolve to this server.",
+        "lets_encrypt": "Request Let's Encrypt certificate",
+        "http2https": "Redirect HTTP to HTTPS",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "admin_email": "Administrator account (optional)",
+        "admin_email_placeholder": "admin@example.org",
+        "admin_email_helper": "E-mail of an already registered ARSnova user to grant administrator rights. Register the account first, then enter it here.",
+        "mail_section": "E-mail (optional)",
+        "smtp_host": "SMTP relay host",
+        "smtp_host_helper": "Used only when no cluster smarthost is configured. ARSnova supports a plain relay on port 25 without authentication.",
+        "smtp_from": "Sender address",
+        "smtp_from_placeholder": "arsnova@example.org",
+        "public_url": "Public URL",
+        "public_url_desc": "ARSnova is reachable at {url}. Users self-register; the first verification e-mail must be delivered (or read the code from the logs when no relay is set).",
+        "https_hint": "Behind a cross-node HTTPS gateway or TLS terminator, enable \"Redirect HTTP to HTTPS\" so links and tokens use the https scheme.",
+        "domain_already_used_in_traefik": "This host name is already used by another instance."
+    },
+    "about": {
+        "title": "About"
+    },
+    "task": {
+        "cannot_create_task": "Cannot create task {action}"
+    },
+    "action": {
+        "get-status": "Get status",
+        "get-configuration": "Get configuration",
+        "configure-module": "Configure module",
+        "get-module-info": "Get module info",
+        "get-name": "Get name",
+        "list-backup-repositories": "List backup repositories",
+        "list-backups": "List backups",
+        "list-installed-modules": "List installed modules"
+    },
+    "error": {
+        "error": "Error",
+        "generic_error": "Something went wrong",
+        "validation_error": "Validation error",
+        "network_error": "Network error",
+        "network_timeout": "Network timeout",
+        "401": "Invalid authentication",
+        "403": "Operation not authorized",
+        "404": "Resource not found",
+        "cannot_retrieve_module_info": "Cannot retrieve module info",
+        "cannot_retrieve_installed_modules": "Cannot retrieve installed modules"
+    }
+}

@@ -1,0 +1,41 @@
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# CouchDB: the primary ARSnova datastore (rooms, content, answers, ...).
+# Reachable inside the arsnova network as "couchdb". The backend core retries
+# its connection on startup and creates the databases (SYSTEM_COUCHDB_CREATEDB),
+# so no explicit health gating is needed here.
+
+[Unit]
+Description=ARSnova CouchDB
+BindsTo=arsnova.service
+After=arsnova.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStartSec=120
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/arsnova-couchdb.pid %t/arsnova-couchdb.ctr-id
+ExecStart=/usr/bin/podman run \
+    --conmon-pidfile %t/arsnova-couchdb.pid \
+    --cidfile %t/arsnova-couchdb.ctr-id \
+    --cgroups=no-conmon \
+    --network arsnova \
+    --replace -d --name couchdb \
+    --volume arsnova-couchdb:/opt/couchdb/data:Z \
+    --env COUCHDB_USER=${COUCHDB_USER} \
+    --env COUCHDB_PASSWORD=${COUCHDB_PASSWORD} \
+    ${COUCHDB_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-couchdb.ctr-id -t 60
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-couchdb.ctr-id
+PIDFile=%t/arsnova-couchdb.pid
+Type=forking
+SyslogIdentifier=%u
+
+[Install]
+WantedBy=default.target

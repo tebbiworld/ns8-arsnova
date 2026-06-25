@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+set -e
+
+# Refresh the SMTP env file and restart the core container so ARSnova picks up
+# the new mail relay. Do nothing if the module is not running yet.
+if systemctl --user is-enabled --quiet arsnova.service; then
+    runagent discover-smarthost || true
+    systemctl --user restart arsnova-core.service
+fi

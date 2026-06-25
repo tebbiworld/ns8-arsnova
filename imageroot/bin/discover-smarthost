@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# Translate the cluster smarthost (mail relay) into the SYSTEM_MAIL_* variables
+# understood by the ARSnova backend core, written to state/smarthost.env which
+# is loaded by the core container.
+#
+# IMPORTANT: ARSnova's core only supports a plain SMTP relay -- a bare host on
+# port 25 without authentication or STARTTLS (system.mail.host is the only knob
+# it exposes). We therefore forward only the relay host. If the cluster
+# smarthost requires authentication, a non-standard port or TLS, ARSnova cannot
+# use it directly; in that case the verification codes still appear in the core
+# logs (`could not be sent`) and a local plain relay should be put in front.
+#
+# Priority:
+#   1. the cluster smarthost, when configured and enabled
+#   2. the manual relay configured in this module (SMTP_MANUAL_HOST)
+#   3. nothing (ARSnova cannot send mail; codes are logged by core)
+#
+
+import os
+import agent
+
+# Connect the local Redis replica so the service still starts when the leader
+# node is unreachable.
+rdb = agent.redis_connect(use_replica=True)
+smtp = agent.get_smarthost_settings(rdb)
+
+host = os.environ.get("TRAEFIK_HOST", "")
+domain = host.split(".", 1)[1] if "." in host else (host or "localhost")
+default_from = os.environ.get("SMTP_MANUAL_FROM", "").strip() or f"arsnova@{domain}"
+
+envfile = "smarthost.env"
+
+
+def write_settings(efp, *, server, from_address):
+    print(f"SYSTEM_MAIL_HOST={server}", file=efp)
+    print(f"SYSTEM_MAIL_SENDERADDRESS={from_address}", file=efp)
+    print("SYSTEM_MAIL_SENDERNAME=ARSnova", file=efp)
+
+
+# Use a .tmp suffix so the target file is only replaced once fully written.
+with open(envfile + ".tmp", "w") as efp:
+    manual_host = os.environ.get("SMTP_MANUAL_HOST", "").strip()
+
+    if smtp.get("enabled") and smtp.get("host"):
+        # 1) cluster smarthost (host only -- see note above)
+        if (str(smtp.get("port")) not in ("25", "")) or smtp.get("username"):
+            print(
+                "# NOTE: cluster smarthost uses auth or a non-standard port; "
+                "ARSnova can only use a plain host:25 relay. Forwarding the "
+                "host anyway -- mail may fail; verification codes are logged.",
+                file=efp,
+            )
+        write_settings(efp, server=smtp["host"], from_address=default_from)
+    elif manual_host:
+        # 2) manual relay configured in this module
+        write_settings(efp, server=manual_host, from_address=default_from)
+    else:
+        # 3) Keep the file present but empty when no relay is configured.
+        print("# smarthost not configured", file=efp)
+
+# Commit the change atomically.
+os.replace(envfile + ".tmp", envfile)
