@@ -81,6 +81,23 @@ buildah push ghcr.io/tebbiworld/arsnova:latest
 remove-module --no-preserve arsnova1
 ```
 
+## Disclaimer & trademarks
+
+This is an **unofficial, community-built** NethServer 8 package. It is not
+affiliated with or endorsed by Particify or the ARSnova team. "ARSnova" and
+"Particify" are trademarks of their respective owners and are used here only to
+identify the packaged software.
+
+It self-hosts the upstream open-source components, pulled at runtime from Docker
+Hub (not redistributed by this module):
+
+- ARSnova server (core, authz, comments, websocket, gateway, formatting) —
+  GPL-3.0-or-later
+- ARSnova web client — MIT (© ARSnova Team and Contributors); the module logo is
+  the official app icon from that MIT-licensed project
+- CouchDB (Apache-2.0), PostgreSQL (PostgreSQL License), RabbitMQ (MPL-2.0),
+  nginx proxy (BSD)
+
 ## License
 
-GPL-3.0-or-later
+This module's own code is GPL-3.0-or-later.

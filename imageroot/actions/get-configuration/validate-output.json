@@ -10,6 +10,7 @@
         "lets_encrypt": { "type": "boolean" },
         "public_url": { "type": "string" },
         "admin_email": { "type": "string" },
+        "allow_registration": { "type": "boolean" },
         "smtp_host": { "type": "string" },
         "smtp_from": { "type": "string" },
         "ldap_enabled": { "type": "boolean" },

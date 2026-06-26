@@ -51,6 +51,16 @@ os.replace("admin.env.tmp", "admin.env")
 agent.set_env("SMTP_MANUAL_HOST", (data.get("smtp_host") or "").strip())
 agent.set_env("SMTP_MANUAL_FROM", (data.get("smtp_from") or "").strip())
 
+# Self-registration toggle. The registered provider stays enabled (so existing
+# accounts keep logging in), but when registration is off we point its
+# allowed-email-domains at a sentinel that matches no real address, so the core
+# rejects every new sign-up. "*" allows anyone to register.
+allow_registration = bool(data.get("allow_registration", True))
+agent.set_env(
+    "REGISTERED_ALLOWED_DOMAINS",
+    "*" if allow_registration else "ns8.registration.disabled",
+)
+
 # --- LDAP / Active Directory login -------------------------------------------
 # Optional. When enabled, AD users that are members of the selected group can
 # log in (provider "AD" on the login page). The settings are written to

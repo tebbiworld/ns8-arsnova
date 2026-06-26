@@ -4,7 +4,7 @@
     "en": "Live audience response and interactive learning system (Particify)",
     "de": "Live-Audience-Response- und interaktives Lernsystem (Particify)"
   },
-  "categories": ["education", "collaboration"],
+  "categories": ["collaboration"],
   "authors": [
     { "name": "tebbi", "email": "info@ebbinghaus.world" }
   ],

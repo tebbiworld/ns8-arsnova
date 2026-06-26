@@ -21,6 +21,7 @@ config["lets_encrypt"] = route.get("lets_encrypt", False)
 
 config["public_url"] = os.getenv("ARSNOVA_ROOT_URL", "")
 config["admin_email"] = os.getenv("ADMIN_ACCOUNT", "")
+config["allow_registration"] = os.getenv("REGISTERED_ALLOWED_DOMAINS", "*") == "*"
 config["smtp_host"] = os.getenv("SMTP_MANUAL_HOST", "")
 config["smtp_from"] = os.getenv("SMTP_MANUAL_FROM", "")
 

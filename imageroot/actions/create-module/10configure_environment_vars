@@ -32,5 +32,11 @@ agent.set_env("PG_COMMENT_PASSWORD", secrets.token_hex(16))
 # Empty until set from the Settings page; an empty value matches no user.
 agent.set_env("ADMIN_ACCOUNT", "")
 
+# Self-registration: the registered (e-mail/password) provider only allows a
+# new sign-up when the address matches one of these domain patterns. "*" means
+# anyone may register (default). The Settings page can switch this to a
+# non-matching sentinel to block new registrations while keeping login working.
+agent.set_env("REGISTERED_ALLOWED_DOMAINS", "*")
+
 # Persist the environment for the systemd units.
 agent.dump_env()

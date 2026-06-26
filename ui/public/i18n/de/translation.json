@@ -34,6 +34,8 @@
         "admin_email": "Administrator-Konto (optional)",
         "admin_email_placeholder": "admin@example.org",
         "admin_email_helper": "E-Mail eines bereits registrierten ARSnova-Benutzers, der Administratorrechte erhalten soll. Konto zuerst registrieren, dann hier eintragen.",
+        "allow_registration": "Selbstregistrierung erlauben",
+        "allow_registration_off_hint": "Neue Registrierungen über die Anmeldeseite sind gesperrt. Bestehende Konten und AD/LDAP-Benutzer können sich weiterhin anmelden.",
         "mail_section": "E-Mail (optional)",
         "smtp_host": "SMTP-Relay-Host",
         "smtp_host_helper": "Wird nur verwendet, wenn kein Cluster-Smarthost konfiguriert ist. ARSnova unterstützt nur ein einfaches Relay auf Port 25 ohne Authentifizierung.",

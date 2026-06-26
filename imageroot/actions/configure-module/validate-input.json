@@ -35,6 +35,11 @@
             "title": "Administrator account",
             "description": "E-mail address of a registered ARSnova user that should be granted administrator rights. Leave empty to keep everyone a regular user."
         },
+        "allow_registration": {
+            "type": "boolean",
+            "title": "Allow self-registration",
+            "description": "Allow anyone to create a new account from the login page. Disable to keep strangers from signing up; existing and AD/LDAP logins keep working."
+        },
         "smtp_host": {
             "type": "string",
             "title": "Manual SMTP relay host",

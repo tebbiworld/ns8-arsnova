@@ -67,6 +67,24 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="spaced"
             ></cv-text-input>
+            <cv-toggle
+              value="allow_registration"
+              :label="$t('settings.allow_registration')"
+              v-model="allow_registration"
+              :disabled="loading.getConfiguration || loading.configureModule"
+              class="toggle"
+            >
+              <template slot="text-left">{{ $t("settings.disabled") }}</template>
+              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+            </cv-toggle>
+            <NsInlineNotification
+              v-if="!allow_registration"
+              kind="info"
+              :title="$t('settings.allow_registration')"
+              :description="$t('settings.allow_registration_off_hint')"
+              :showCloseButton="false"
+              class="info-tile"
+            />
 
             <h4 class="section">{{ $t("settings.mail_section") }}</h4>
             <cv-text-input
@@ -241,6 +259,7 @@ export default {
       lets_encrypt: false,
       http2https: false,
       admin_email: "",
+      allow_registration: true,
       smtp_host: "",
       smtp_from: "",
       public_url: "",
@@ -326,6 +345,7 @@ export default {
       this.lets_encrypt = !!config.lets_encrypt;
       this.http2https = !!config.http2https;
       this.admin_email = config.admin_email || "";
+      this.allow_registration = config.allow_registration !== false;
       this.smtp_host = config.smtp_host || "";
       this.smtp_from = config.smtp_from || "";
       this.public_url = config.public_url || "";
@@ -431,6 +451,7 @@ export default {
             lets_encrypt: this.lets_encrypt,
             http2https: this.http2https,
             admin_email: this.admin_email,
+            allow_registration: this.allow_registration,
             smtp_host: this.smtp_host,
             smtp_from: this.smtp_from,
             ldap_enabled: this.ldap_enabled,
