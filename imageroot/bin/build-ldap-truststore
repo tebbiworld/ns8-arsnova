@@ -1,0 +1,45 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Build the Java truststore used by the backend core for LDAPS.
+#
+# The store is a copy of the JDK default CA bundle (so all public CAs keep
+# working) with the AD/LDAP server certificate added on top. That makes LDAPS
+# work both with publicly-trusted certificates and with the self-signed
+# certificates that on-prem Active Directory / Samba commonly present.
+#
+# Reads LDAP_HOST / LDAP_PORT from the module environment (set by
+# configure-module). Runs in the module state directory. keytool is taken from
+# the core image; openssl from the host fetches the certificate.
+
+set -e
+exec 1>&2
+
+TS=ad-truststore.p12
+HOST="${LDAP_HOST:-}"
+PORT="${LDAP_PORT:-636}"
+IMG="${ARSNOVA_SERVER_CORE_IMAGE:?core image not set}"
+
+# Best-effort: fetch the certificate the directory server presents.
+rm -f ad-ldaps.pem
+if [ -n "$HOST" ]; then
+    echo | openssl s_client -connect "$HOST:$PORT" 2>/dev/null \
+        | openssl x509 -outform PEM > ad-ldaps.pem 2>/dev/null || true
+fi
+
+# Build the store inside the core image (which ships keytool + the cacerts).
+podman run --rm -v "$PWD":/state:Z --entrypoint sh "$IMG" -c '
+    set -e
+    cp /opt/java/openjdk/lib/security/cacerts /state/'"$TS"'.tmp
+    if [ -s /state/ad-ldaps.pem ]; then
+        keytool -importcert -noprompt -alias ad-ldaps \
+            -file /state/ad-ldaps.pem \
+            -keystore /state/'"$TS"'.tmp -storepass changeit
+    fi
+    mv -f /state/'"$TS"'.tmp /state/'"$TS"'
+'
+echo "build-ldap-truststore: done (host=${HOST:-none})"

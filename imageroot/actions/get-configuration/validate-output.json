@@ -11,6 +11,14 @@
         "public_url": { "type": "string" },
         "admin_email": { "type": "string" },
         "smtp_host": { "type": "string" },
-        "smtp_from": { "type": "string" }
+        "smtp_from": { "type": "string" },
+        "ldap_enabled": { "type": "boolean" },
+        "ldap_url": { "type": "string" },
+        "ldap_base_dn": { "type": "string" },
+        "ldap_bind_dn": { "type": "string" },
+        "ldap_bind_password": { "type": "string" },
+        "ldap_group": { "type": "string" },
+        "ldap_user_attribute": { "type": "string" },
+        "ldap_title": { "type": "string" }
     }
 }

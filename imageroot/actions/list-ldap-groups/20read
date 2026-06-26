@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Query the directory server for groups, so the Settings page can offer a
+# dropdown of existing AD/LDAP groups to restrict access to. The connection
+# settings are taken from the request (the values currently entered in the UI)
+# and fall back to the saved configuration. LDAPS certificate validation is
+# skipped here -- this is a read-only browse helper; the actual login path
+# pins the certificate via the truststore.
+
+import os
+import ssl
+import sys
+import json
+import urllib.parse
+
+from ldap3 import Server, Connection, Tls, SUBTREE
+
+data = json.load(sys.stdin)
+
+
+def pick(key, env):
+    val = (data.get(key) or "").strip()
+    return val if val else os.environ.get(env, "")
+
+
+url = pick("ldap_url", "LDAP_URL").rstrip("/")
+base_dn = pick("ldap_base_dn", "LDAP_BASE_DN")
+bind_dn = pick("ldap_bind_dn", "LDAP_BIND_DN")
+# password may legitimately contain no surrounding whitespace meaning
+password = data.get("ldap_bind_password")
+if not password:
+    password = os.environ.get("LDAP_BIND_PASSWORD", "")
+
+result = {"groups": [], "error": ""}
+
+try:
+    if not (url and base_dn and bind_dn):
+        raise ValueError("missing LDAP connection settings")
+
+    parts = urllib.parse.urlsplit(url)
+    use_ssl = parts.scheme != "ldap"
+    port = parts.port or (389 if not use_ssl else 636)
+    tls = Tls(validate=ssl.CERT_NONE) if use_ssl else None
+    server = Server(parts.hostname, port=port, use_ssl=use_ssl, tls=tls, connect_timeout=8)
+    conn = Connection(server, user=bind_dn, password=password, auto_bind=True, receive_timeout=15)
+    conn.search(
+        base_dn,
+        "(objectClass=group)",
+        search_scope=SUBTREE,
+        attributes=["cn"],
+        size_limit=1000,
+    )
+    groups = []
+    for e in conn.entries:
+        cn = str(e.cn) if "cn" in e else ""
+        groups.append({"dn": e.entry_dn, "name": cn or e.entry_dn})
+    conn.unbind()
+    groups.sort(key=lambda g: g["name"].lower())
+    result["groups"] = groups
+except Exception as ex:
+    result["error"] = str(ex)
+
+json.dump(result, fp=sys.stdout)

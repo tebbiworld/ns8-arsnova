@@ -24,4 +24,14 @@ config["admin_email"] = os.getenv("ADMIN_ACCOUNT", "")
 config["smtp_host"] = os.getenv("SMTP_MANUAL_HOST", "")
 config["smtp_from"] = os.getenv("SMTP_MANUAL_FROM", "")
 
+# LDAP / Active Directory login settings (for the Settings page to edit).
+config["ldap_enabled"] = os.getenv("LDAP_ENABLED") == "True"
+config["ldap_url"] = os.getenv("LDAP_URL", "")
+config["ldap_base_dn"] = os.getenv("LDAP_BASE_DN", "")
+config["ldap_bind_dn"] = os.getenv("LDAP_BIND_DN", "")
+config["ldap_bind_password"] = os.getenv("LDAP_BIND_PASSWORD", "")
+config["ldap_group"] = os.getenv("LDAP_GROUP", "")
+config["ldap_user_attribute"] = os.getenv("LDAP_USER_ATTRIBUTE", "sAMAccountName")
+config["ldap_title"] = os.getenv("LDAP_TITLE", "AD")
+
 json.dump(config, fp=sys.stdout)

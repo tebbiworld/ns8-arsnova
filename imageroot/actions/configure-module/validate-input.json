@@ -44,6 +44,46 @@
             "type": "string",
             "title": "Mail sender address",
             "description": "Sender address for ARSnova e-mails. Defaults to arsnova@<domain>."
+        },
+        "ldap_enabled": {
+            "type": "boolean",
+            "title": "Enable AD/LDAP login",
+            "description": "Allow login with Active Directory / LDAP accounts."
+        },
+        "ldap_url": {
+            "type": "string",
+            "title": "LDAP URL",
+            "description": "LDAPS URL of the directory server, e.g. ldaps://ad.example.org:636"
+        },
+        "ldap_base_dn": {
+            "type": "string",
+            "title": "Base DN",
+            "description": "Search base, e.g. DC=ad,DC=example,DC=org"
+        },
+        "ldap_bind_dn": {
+            "type": "string",
+            "title": "Bind DN",
+            "description": "Service account used to search the directory, e.g. ldapservice@ad.example.org"
+        },
+        "ldap_bind_password": {
+            "type": "string",
+            "title": "Bind password",
+            "description": "Password of the bind/service account."
+        },
+        "ldap_group": {
+            "type": "string",
+            "title": "Access group DN",
+            "description": "Distinguished name of the group whose members may log in. Empty means any directory user."
+        },
+        "ldap_user_attribute": {
+            "type": "string",
+            "title": "Login attribute",
+            "description": "Attribute matched against the entered user name. Defaults to sAMAccountName (Active Directory)."
+        },
+        "ldap_title": {
+            "type": "string",
+            "title": "Provider label",
+            "description": "Label shown on the login page for this provider. Defaults to 'AD'."
         }
     }
 }

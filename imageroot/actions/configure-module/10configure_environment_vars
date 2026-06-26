@@ -8,6 +8,8 @@
 import os
 import sys
 import json
+import subprocess
+import urllib.parse
 
 import agent
 
@@ -49,4 +51,82 @@ os.replace("admin.env.tmp", "admin.env")
 agent.set_env("SMTP_MANUAL_HOST", (data.get("smtp_host") or "").strip())
 agent.set_env("SMTP_MANUAL_FROM", (data.get("smtp_from") or "").strip())
 
+# --- LDAP / Active Directory login -------------------------------------------
+# Optional. When enabled, AD users that are members of the selected group can
+# log in (provider "AD" on the login page). The settings are written to
+# state/ldap.env, loaded by the core container. security.authentication-
+# providers.ldap is a list, so the keys are LDAP_0_*. A truststore is built so
+# the core trusts the directory server's (often self-signed) LDAPS certificate.
+ldap_enabled = bool(data.get("ldap_enabled", False))
+ldap_url = (data.get("ldap_url") or "").strip().rstrip("/")
+ldap_base_dn = (data.get("ldap_base_dn") or "").strip()
+ldap_bind_dn = (data.get("ldap_bind_dn") or "").strip()
+ldap_bind_password = (data.get("ldap_bind_password") or "")
+ldap_group = (data.get("ldap_group") or "").strip()
+ldap_user_attribute = (data.get("ldap_user_attribute") or "sAMAccountName").strip()
+ldap_title = (data.get("ldap_title") or "AD").strip()
+
+# Persist the connection settings (used by get-configuration and the
+# list-ldap-groups action to pre-fill / query).
+agent.set_env("LDAP_ENABLED", ldap_enabled)
+agent.set_env("LDAP_URL", ldap_url)
+agent.set_env("LDAP_BASE_DN", ldap_base_dn)
+agent.set_env("LDAP_BIND_DN", ldap_bind_dn)
+agent.set_env("LDAP_BIND_PASSWORD", ldap_bind_password)
+agent.set_env("LDAP_GROUP", ldap_group)
+agent.set_env("LDAP_USER_ATTRIBUTE", ldap_user_attribute)
+agent.set_env("LDAP_TITLE", ldap_title)
+
+ldap_host = ""
+ldap_port = "636"
+if ldap_url:
+    parts = urllib.parse.urlsplit(ldap_url)
+    ldap_host = parts.hostname or ""
+    ldap_port = str(parts.port or (389 if parts.scheme == "ldap" else 636))
+agent.set_env("LDAP_HOST", ldap_host)
+agent.set_env("LDAP_PORT", ldap_port)
+
+with open("ldap.env.tmp", "w") as efp:
+    if ldap_enabled and ldap_url and ldap_base_dn:
+        host_url = f"{ldap_url}/{ldap_base_dn}"
+        if ldap_group:
+            search_filter = f"(&({ldap_user_attribute}={{0}})(memberOf={ldap_group}))"
+        else:
+            search_filter = f"({ldap_user_attribute}={{0}})"
+        p = "SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_"
+        print(f"{p}ENABLED=true", file=efp)
+        print(f"{p}TITLE={ldap_title}", file=efp)
+        print(f"{p}HOSTURL={host_url}", file=efp)
+        # Search-based authentication: no DN pattern, find the user then bind.
+        print(f"{p}USERDNPATTERN=", file=efp)
+        print(f"{p}USERIDATTRIBUTE={ldap_user_attribute}", file=efp)
+        print(f"{p}USERSEARCHBASE=", file=efp)
+        print(f"{p}USERSEARCHFILTER={search_filter}", file=efp)
+        print(f"{p}MANAGERUSERDN={ldap_bind_dn}", file=efp)
+        print(f"{p}MANAGERPASSWORD={ldap_bind_password}", file=efp)
+        print(f"{p}ALLOWEDROLES_0=MODERATOR", file=efp)
+        print(f"{p}ALLOWEDROLES_1=PARTICIPANT", file=efp)
+        # Trust the AD LDAPS certificate and skip hostname verification (AD
+        # certs rarely match the connection host name).
+        print(
+            "JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStore=/etc/ssl/ad-truststore.p12"
+            " -Djavax.net.ssl.trustStorePassword=changeit"
+            " -Djavax.net.ssl.trustStoreType=PKCS12"
+            " -Dcom.sun.jndi.ldap.object.disableEndpointIdentification=true",
+            file=efp,
+        )
+    else:
+        print("# ldap disabled", file=efp)
+os.replace("ldap.env.tmp", "ldap.env")
+
 agent.dump_env()
+
+# Rebuild the LDAPS truststore (default CAs + the AD server certificate).
+if ldap_enabled and ldap_host:
+    helper_env = dict(os.environ)
+    helper_env["LDAP_HOST"] = ldap_host
+    helper_env["LDAP_PORT"] = ldap_port
+    try:
+        subprocess.run(["build-ldap-truststore"], env=helper_env, check=True)
+    except Exception as ex:
+        print(f"build-ldap-truststore failed: {ex}", file=sys.stderr)

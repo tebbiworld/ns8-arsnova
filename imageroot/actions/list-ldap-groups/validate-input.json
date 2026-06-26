@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "list-ldap-groups input",
+    "$id": "http://nethserver.org/json-schema/task/input/arsnova/list-ldap-groups",
+    "description": "Connection settings used to browse directory groups (fall back to saved configuration)",
+    "type": "object",
+    "properties": {
+        "ldap_url": { "type": "string" },
+        "ldap_base_dn": { "type": "string" },
+        "ldap_bind_dn": { "type": "string" },
+        "ldap_bind_password": { "type": "string" }
+    }
+}

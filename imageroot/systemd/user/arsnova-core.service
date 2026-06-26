@@ -25,7 +25,11 @@ TimeoutStartSec=300
 TimeoutStopSec=70
 ExecStartPre=/bin/rm -f %t/arsnova-core.pid %t/arsnova-core.ctr-id
 # Make sure the optional env files exist before they are referenced below.
-ExecStartPre=/bin/touch %S/state/smarthost.env %S/state/admin.env
+ExecStartPre=/bin/touch %S/state/smarthost.env %S/state/admin.env %S/state/ldap.env
+# Ensure a Java truststore exists (a copy of the JDK default CAs). The LDAP/AD
+# configure step rebuilds it with the directory server certificate added, so
+# the core can validate LDAPS even with a self-signed AD certificate.
+ExecStartPre=/bin/sh -c 'test -f %S/state/ad-truststore.p12 || /usr/bin/podman run --rm -v %S/state:/out:Z --entrypoint cp ${ARSNOVA_SERVER_CORE_IMAGE} /opt/java/openjdk/lib/security/cacerts /out/ad-truststore.p12'
 ExecStart=/usr/bin/podman run \
     --conmon-pidfile %t/arsnova-core.pid \
     --cidfile %t/arsnova-core.ctr-id \
@@ -34,6 +38,8 @@ ExecStart=/usr/bin/podman run \
     --replace -d --name arsnova-backend-core \
     --env-file %S/state/smarthost.env \
     --env-file %S/state/admin.env \
+    --env-file %S/state/ldap.env \
+    --volume %S/state/ad-truststore.p12:/etc/ssl/ad-truststore.p12:ro,Z \
     --env SYSTEM_API_PROXYPATH=/api \
     --env SYSTEM_ROOT_URL=${ARSNOVA_ROOT_URL} \
     --env SYSTEM_SOCKETIO_BINDADDRESS=0.0.0.0 \
