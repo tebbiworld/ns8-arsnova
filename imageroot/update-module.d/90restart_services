@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# The core's update-module action does not restart the module's units, so unit
+# or config changes would only apply at the next reboot. This hook also re-runs
+# the same-node LDAP detection (1.1.1, see bin/ldap-container-host) on the
+# ldap.env written by an older configure-module.
+#
+
+import os
+import re
+import subprocess
+import sys
+import urllib.parse
+
+import agent
+
+sys.stdout = sys.stderr  # any output goes to the journal
+
+env = agent.read_envfile("environment")
+ldap_url = env.get("LDAP_URL", "")
+ldap_host = env.get("LDAP_HOST", "")
+ldap_port = env.get("LDAP_PORT", "636")
+base_dn = env.get("LDAP_BASE_DN", "")
+if ldap_url and ldap_host and os.path.isfile("ldap.env"):
+    chost = subprocess.run(
+        [os.path.expanduser("~/.config/bin/ldap-container-host"), ldap_host],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip() or ldap_host
+    scheme = urllib.parse.urlsplit(ldap_url).scheme or "ldaps"
+    url = ldap_url if chost == ldap_host else f"{scheme}://{chost}:{ldap_port}"
+    with open("ldap.env") as fp:
+        content = fp.read()
+    new = re.sub(
+        r"^(SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_HOSTURL=).*$",
+        lambda m: f"{m.group(1)}{url}/{base_dn}", content, flags=re.M,
+    )
+    if new != content:
+        with open("ldap.env.tmp", "w") as fp:
+            fp.write(new)
+        os.replace("ldap.env.tmp", "ldap.env")
+        print(f"ldap.env: HOSTURL -> {url}/{base_dn}")
+
+subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+subprocess.run(["systemctl", "--user", "restart", "arsnova.service", "arsnova-core.service"], check=True)

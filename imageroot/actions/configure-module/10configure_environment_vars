@@ -96,9 +96,22 @@ if ldap_url:
 agent.set_env("LDAP_HOST", ldap_host)
 agent.set_env("LDAP_PORT", ldap_port)
 
+# The core container cannot reach its own node's IP address (rootless
+# network); when the directory server runs on this very node it must connect
+# to host.containers.internal instead. See bin/ldap-container-host. The
+# truststore below is still fetched from the real host name.
+container_ldap_url = ldap_url
+if ldap_url and ldap_host:
+    container_ldap_host = subprocess.run(
+        [os.path.expanduser("~/.config/bin/ldap-container-host"), ldap_host],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip() or ldap_host
+    if container_ldap_host != ldap_host:
+        container_ldap_url = f"{parts.scheme}://{container_ldap_host}:{ldap_port}"
+
 with open("ldap.env.tmp", "w") as efp:
     if ldap_enabled and ldap_url and ldap_base_dn:
-        host_url = f"{ldap_url}/{ldap_base_dn}"
+        host_url = f"{container_ldap_url}/{ldap_base_dn}"
         if ldap_group:
             search_filter = f"(&({ldap_user_attribute}={{0}})(memberOf={ldap_group}))"
         else:

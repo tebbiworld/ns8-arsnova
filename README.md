@@ -101,3 +101,12 @@ Hub (not redistributed by this module):
 ## License
 
 This module's own code is GPL-3.0-or-later.
+
+## Directory server on the same node
+
+If the LDAP/AD server is the node itself (for example the NS8 Samba account
+provider on this node), the core container cannot connect to the node's own IP
+address — rootless containers see that address as their own. The module detects
+this at configuration time and points the core at `host.containers.internal`
+instead; nothing needs to be configured for it. The detection runs again on
+every module update.

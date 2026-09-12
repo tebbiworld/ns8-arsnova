@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# Print the host name the *container* must use to reach the LDAP server.
+#
+# Rootless containers cannot connect to their own node's IP address: with the
+# default rootless network (pasta) the node address is mirrored into the
+# container, so the connection is refused inside the container instead of
+# reaching the host. That is exactly the situation when the account provider
+# (the NS8 Samba domain controller) runs on the same node as this module.
+#
+# If the configured LDAP host resolves to one of the node's own addresses, the
+# container has to talk to `host.containers.internal` instead, which Podman
+# maps to the host for every network mode. Any other host is printed unchanged.
+#
+# Usage: ldap-container-host <host-or-ip>
+#
+
+import ipaddress
+import json
+import socket
+import subprocess
+import sys
+
+HOST_ALIAS = "host.containers.internal"
+
+
+def node_addresses():
+    addrs = set()
+    try:
+        out = subprocess.run(["/usr/sbin/ip", "-j", "addr"], capture_output=True, text=True, check=True).stdout
+        for link in json.loads(out):
+            for a in link.get("addr_info", []):
+                addrs.add(a.get("local", ""))
+    except Exception:
+        pass
+    return addrs
+
+
+def resolve(host):
+    try:
+        return {ai[4][0] for ai in socket.getaddrinfo(host, None)}
+    except socket.gaierror:
+        return set()
+
+
+def container_host(host):
+    host = (host or "").strip()
+    if not host:
+        return host
+    targets = resolve(host)
+    if any(ipaddress.ip_address(t).is_loopback for t in targets if t):
+        return HOST_ALIAS
+    if targets & node_addresses():
+        return HOST_ALIAS
+    return host
+
+
+if __name__ == "__main__":
+    print(container_host(sys.argv[1] if len(sys.argv) > 1 else ""))
