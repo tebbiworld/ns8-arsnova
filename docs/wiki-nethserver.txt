@@ -1,0 +1,133 @@
+======ARSnova======
+[[https://github.com/particify/arsnova|ARSnova]] is an audience response system: the audience answers polls and quizzes on their own phones, asks questions and gives live feedback, and the results appear on the presenter's screen in real time. It is the open-source basis of the hosted service [[https://www.particify.de/|Particify]].
+
+====Announcement and talks====
+The ARSnova app announcement TBA
+
+ARSnova is a community application from the [[ns8:tebbiworld_repository|tebbiworld]] repository. Documentation and source can be found on [[https://github.com/tebbiworld/ns8-arsnova|Github]]
+
+=====What it does=====
+The presenter creates a room; participants join it with a browser, without an account. Upstream names these features:
+
+  * **Polls and evaluations** — several question formats: multiple choice, Likert scale, open question, sorting. Free-text answers can be shown as a word cloud.
+  * **Quizzes** — the same formats scored as a competition, to check what the audience already knows.
+  * **Comments and Q&A** — the audience posts questions and votes them up, so the important ones surface. Comments can be moderated before publication, and further users can be made moderators.
+  * **Live feedback** — a quick reading of whether the audience can still follow, at any point during the talk.
+  * **Live updates** — results and comments update in real time on all screens.
+  * **Collections** — quizzes and evaluations can be organised into sets.
+
+Suitable for lectures, classes, training sessions and conference talks, on site, online or mixed.
+
+=====Architecture=====
+ARSnova is a microservice stack. Several services listen on port 8080 and find each other by DNS name, so the module does not use a single pod. It creates a dedicated rootless Podman network named ''arsnova'' with built-in DNS and runs each service as its own container on that network. Only the front proxy is published to the host.
+
+^ Container ^ Purpose ^
+| ''arsnova-proxy'' | nginx front proxy, the only published entry point |
+| ''arsnova-web'' | Angular web client |
+| ''arsnova-http-gateway'' | %%API%% gateway, distributes ''/api'' to the services |
+| ''arsnova-ws-gateway'' | WebSocket/STOMP gateway for live updates |
+| ''arsnova-backend-core'' | rooms, contents, answers, live socket |
+| ''arsnova-auth-service'' | authentication and authorisation (JWT) |
+| ''arsnova-comment-service'' | Q&A and audience questions |
+| ''arsnova-formatting-service'' | Markdown and LaTeX rendering |
+| ''couchdb'' | primary datastore |
+| ''postgresql_auth'', ''postgresql_comment'' | service databases |
+| ''rabbitmq'' | STOMP broker between core and WebSocket gateway |
+
+All application images are official ''particify/*'' images, pinned to version 3.13, plus CouchDB, PostgreSQL and RabbitMQ. They are pulled at runtime and are not redistributed by the module.
+
+====Routing====
+Traefik publishes everything on one host name and forwards the WebSocket upgrade transparently. The front proxy dispatches internally:
+
+  * ''/'' to the web client
+  * ''/api/'' to the HTTP gateway
+  * ''/api/ws/'' to the WebSocket gateway, which carries the live features
+
+=====Resource requirements=====
+ARSnova needs noticeably more resources than a single-service module. Particify recommends 4 CPU cores and 8 GB RAM. On a smaller node the Java services start slowly and may restart a few times before the stack settles. Plan the node accordingly before installing.
+
+=====Installation=====
+On the NethServer 8 cluster leader:
+
+<code bash>
+add-module ghcr.io/tebbiworld/arsnova:1.1.0 1
+</code>
+
+Configure it, replacing the host name:
+
+<code bash>
+api-cli run module/arsnova1/configure-module --data '{
+  "host": "arsnova.example.org",
+  "lets_encrypt": true,
+  "http2https": true,
+  "admin_email": "you@example.org"
+}'
+</code>
+
+Then open the published address, register an account and confirm it. ARSnova sends the verification code by e-mail. Set //Administrator account// to the address of an already registered user to give that account administrator rights.
+
+=====Settings=====
+
+^ Setting ^ Description ^
+| Host name | %%FQDN%% under which ARSnova is published. |
+| Let's Encrypt certificate | Requests a certificate for the host name. Requires that ports 80 and 443 of this name reach this node. |
+| HTTP to HTTPS redirection | Redirects HTTP to HTTPS. |
+| Administrator account | E-mail address of a **registered** ARSnova user that is granted administrator rights. Applies to accounts created with e-mail and password, not to directory logins. Empty means everyone stays a regular user. |
+| Allow self-registration | Whether anyone can create an account from the login page. When off, existing accounts and directory logins keep working. |
+
+====Outgoing mail====
+ARSnova sends the verification code for new accounts and the password reset links by e-mail. If the cluster has a smarthost configured, the module uses it. Otherwise a relay host can be entered manually, together with the sender address.
+
+Note the limitation: the ARSnova core supports a plain %%SMTP%% relay only — port 25, no authentication, no TLS. A relay that requires authentication cannot be used.
+
+If no usable relay is available, the verification code appears in the log of the core service:
+
+<code bash>
+journalctl --user -u arsnova-core.service | grep -i "verification\|code"
+</code>
+
+====Active Directory and LDAP====
+Optional. When enabled, the login page offers an additional provider whose label you can choose.
+
+^ Setting ^ Description ^
+| LDAP address | LDAPS address of the directory server, for example %%ldaps://ad.example.org:636%%. |
+| Base DN | Search base, for example ''DC=ad,DC=example,DC=org''. |
+| Bind DN and bind password | Read-only service account for the directory search. |
+| Access group DN | Full DN of the group whose members may log in. Empty means every directory user may log in. |
+| Login attribute | Attribute matched against the entered user name. Default ''sAMAccountName''. |
+| Provider label | Label of this provider on the login page. Default ''AD''. |
+
+The module builds a Java truststore for the core service: a copy of the default CA bundle with the certificate of your directory server added. LDAPS therefore works both with a publicly trusted certificate and with the self-signed certificate that an on-premises Active Directory or Samba usually presents.
+
+=====Backup=====
+The module does not list its volumes for the NS8 backup; there is no ''state-include.conf''. An NS8 backup of this module contains the module environment only, **not** the CouchDB datastore with rooms, contents and answers, and not the two service databases. Back these up separately until this is added to the module.
+
+=====Licences and trademarks=====
+Unofficial, community-built package, not affiliated with or endorsed by Particify or the ARSnova team. "ARSnova" and "Particify" are trademarks of their respective owners and are used here only to identify the packaged software.
+
+The module pulls the upstream components at runtime and does not redistribute them:
+
+  * ARSnova server services (core, authz, comments, websocket, gateway, formatting) — GPL-3.0-or-later
+  * ARSnova web client — MIT (© ARSnova Team and Contributors); the module logo is the app icon from that project
+  * CouchDB (Apache-2.0), PostgreSQL (PostgreSQL Licence), RabbitMQ (MPL-2.0), nginx proxy (BSD)
+
+The module's own code is licensed %%GPL%%-3.0-or-later.
+
+=====Links=====
+
+  * [[https://particify.de/manual/|End-user documentation]] (German)
+  * [[https://www.particify.de/de/features/|Feature overview at Particify]]
+  * [[https://github.com/particify/arsnova|ARSnova on Github]]
+  * [[https://gitlab.com/particify/dev/foss/docker-orchestration|Upstream installation guide]]
+  * [[https://github.com/tebbiworld/ns8-arsnova/issues|Bug reports]]
+
+=====Disclaimer=====
+Private hobby project, shared as-is. No warranty, no guaranteed support, use at your own risk.
+
+----
+{{tag>application}}
+{{tag>category:Education}}
+{{tag>status:Alpha}}
+{{tag>certlevel:1}}
+{{tag>repo:tebbiworld}}
+{{tag>description:"Live audience response and interactive learning system"}}
