@@ -1,0 +1,132 @@
+name: Auto release on upstream update
+
+# Weekly: when the upstream image has a newer version tag (or, for upstreams
+# without version tags, a newer `latest` digest) AND the last release
+# is at least MIN_DAYS old, pin the new tag (in every listed image reference),
+# bump the module version, build, publish the image(s) (version tag + latest),
+# create the GitHub release and ask the catalog repository to regenerate.
+# Manual runs can force the release regardless of the interval or only report.
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Release even if the last release is younger than the interval"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Only report what would happen"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  UPSTREAM_IMAGES: "docker.io/particify/arsnova-server-core docker.io/particify/arsnova-server-authz docker.io/particify/arsnova-server-comments docker.io/particify/arsnova-server-websocket docker.io/particify/arsnova-server-gateway docker.io/particify/arsnova-server-formatting docker.io/particify/arsnova-webclient docker.io/particify/arsnova-proxy"
+  TAG_REGEX: '^(?P<ver>\d+\.\d+)$'
+  UPSTREAM_NAME: "ARSnova / Particify"
+  PIN_FILES: "build-images.sh"
+  MIN_DAYS: "42"
+  MODULE: "arsnova"
+  PUBLISH_IMAGES: "ghcr.io/tebbiworld/arsnova"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare pinned and upstream version
+        id: upstream
+        run: python3 .github/scripts/upstream_check.py
+
+      - name: Check release interval
+        id: interval
+        run: |
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          last_ts=0; [ -n "$last_tag" ] && last_ts=$(git log -1 --format=%ct "$last_tag")
+          age_days=$(( ( $(date +%s) - last_ts ) / 86400 ))
+          due=false; [ "$age_days" -ge "$MIN_DAYS" ] && due=true
+          [ "${{ inputs.force }}" = "true" ] && due=true
+          echo "last_tag=$last_tag" >> "$GITHUB_OUTPUT"
+          echo "due=$due" >> "$GITHUB_OUTPUT"
+          echo "last release $last_tag is $age_days days old, due=$due, newer=${{ steps.upstream.outputs.newer }}"
+
+      - name: Decide
+        id: decide
+        run: |
+          go=false
+          if [ "${{ steps.upstream.outputs.newer }}" = "true" ] && [ "${{ steps.interval.outputs.due }}" = "true" ] && [ "${{ inputs.dry_run }}" != "true" ]; then go=true; fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "Upstream ${{ steps.upstream.outputs.current }} -> ${{ steps.upstream.outputs.newest }}; release now: $go"
+
+      - name: Bump version, changelog and tag
+        if: steps.decide.outputs.go == 'true'
+        id: bump
+        run: |
+          set -e
+          cur="${{ steps.upstream.outputs.current }}"; new="${{ steps.upstream.outputs.newest }}"
+          bash .upstream_bump.sh && rm -f .upstream_bump.sh
+          last="${{ steps.interval.outputs.last_tag }}"; last="${last:-1.0.0}"
+          IFS=. read -r a b c <<< "$last"; ver="$a.$b.$((c+1))"
+          python3 - "$ver" "$(date +%F)" "$cur" "$new" "$UPSTREAM_NAME" <<'PY'
+          import sys
+          ver, today, cur, new, name = sys.argv[1:]
+          entry = f"## {ver} — {today}\n\n- {name} {cur} → {new} (automatic upstream update).\n\n"
+          try:
+              s = open("CHANGELOG.md").read()
+          except FileNotFoundError:
+              s = "# Changelog\n\n"
+          if s.startswith("# Changelog"):
+              head, rest = s.split("\n", 1)
+              s = head + "\n\n" + entry + rest.lstrip("\n")
+          else:
+              s = entry + s
+          open("CHANGELOG.md", "w").write(s)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "$ver: ${UPSTREAM_NAME} ${cur} -> ${new}"
+          git tag "$ver"
+          git push origin HEAD:main "$ver"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Build module image
+        if: steps.decide.outputs.go == 'true'
+        run: IMAGETAG="${{ steps.bump.outputs.version }}" APPTAG="${{ steps.bump.outputs.version }}" bash ./build-images.sh
+
+      - name: Publish image(s)
+        if: steps.decide.outputs.go == 'true'
+        run: |
+          set -e
+          ver="${{ steps.bump.outputs.version }}"
+          echo "${{ secrets.GHCR_TOKEN }}" | buildah login -u tebbiworld --password-stdin ghcr.io
+          for img in $PUBLISH_IMAGES; do
+            # the module image is committed untagged (latest); runtime images built
+            # by build-images.sh carry the version tag already
+            src="$img"; buildah inspect "$img:$ver" >/dev/null 2>&1 && src="$img:$ver"
+            buildah push "$src" "docker://$img:$ver"
+            buildah push "$src" "docker://$img:latest"
+          done
+
+      - name: GitHub release
+        if: steps.decide.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.bump.outputs.version }}" --title "${{ steps.bump.outputs.version }}" \
+            --notes "${UPSTREAM_NAME} ${{ steps.upstream.outputs.current }} → ${{ steps.upstream.outputs.newest }} (automatic upstream update). Update through the NS8 Software Center."
+
+      - name: Ask the catalog to regenerate
+        if: steps.decide.outputs.go == 'true'
+        run: |
+          curl -s -o /dev/null -w "catalog dispatch -> %{http_code}\n" -X POST \
+            -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/tebbiworld/ns8-repo/dispatches \
+            -d '{"event_type":"module-released","client_payload":{"module":"'"$MODULE"'","version":"${{ steps.bump.outputs.version }}"}}'
