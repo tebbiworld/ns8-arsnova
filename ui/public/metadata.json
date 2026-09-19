@@ -4,14 +4,20 @@
     "en": "Live audience response and interactive learning system (Particify)",
     "de": "Live-Audience-Response- und interaktives Lernsystem (Particify)"
   },
-  "categories": ["collaboration"],
+  "categories": [
+    "collaboration"
+  ],
   "authors": [
-    { "name": "tebbi", "email": "info@ebbinghaus.world" }
+    {
+      "name": "tebbi",
+      "email": "info@ebbinghaus.world"
+    }
   ],
   "docs": {
     "documentation_url": "https://particify.de/manual/",
     "bug_url": "https://github.com/tebbiworld/ns8-arsnova/issues",
-    "code_url": "https://github.com/tebbiworld/ns8-arsnova"
+    "code_url": "https://github.com/tebbiworld/ns8-arsnova",
+    "relnotes_url": "https://github.com/tebbiworld/ns8-arsnova/releases"
   },
   "source": "ghcr.io/tebbiworld/arsnova"
 }
