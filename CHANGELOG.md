@@ -15,6 +15,11 @@ Alignment with the NethServer module conventions (NethServer/agents skills).
 
 - Robot Framework tests (install, update from the previous release, backup and restore) run on real NS8 nodes through `stephdl/ns8-ci-actions`.
 
+### Platform integration
+
+- **Clone and move.** New `clone-module` step (a link to the restore step): a cloned or moved instance gets its route and settings back instead of coming up unconfigured.
+- Release notes are linked from the software centre (`relnotes_url`).
+
 ## 1.1.1 — 2026-09-12
 
 ### Fixed
