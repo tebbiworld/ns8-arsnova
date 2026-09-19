@@ -10,6 +10,7 @@ import sys
 import json
 
 import agent
+import modsecrets
 
 config = {}
 
@@ -30,7 +31,7 @@ config["ldap_enabled"] = os.getenv("LDAP_ENABLED") == "True"
 config["ldap_url"] = os.getenv("LDAP_URL", "")
 config["ldap_base_dn"] = os.getenv("LDAP_BASE_DN", "")
 config["ldap_bind_dn"] = os.getenv("LDAP_BIND_DN", "")
-config["ldap_bind_password"] = os.getenv("LDAP_BIND_PASSWORD", "")
+config["ldap_bind_password"] = modsecrets.get("LDAP_BIND_PASSWORD")
 config["ldap_group"] = os.getenv("LDAP_GROUP", "")
 config["ldap_user_attribute"] = os.getenv("LDAP_USER_ATTRIBUTE", "sAMAccountName")
 config["ldap_title"] = os.getenv("LDAP_TITLE", "AD")

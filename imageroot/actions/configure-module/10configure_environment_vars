@@ -12,6 +12,7 @@ import subprocess
 import urllib.parse
 
 import agent
+import modsecrets
 
 data = json.load(sys.stdin)
 
@@ -21,6 +22,8 @@ lets_encrypt = data.get("lets_encrypt", False)
 
 agent.set_env("TRAEFIK_HOST", host)
 agent.set_env("TRAEFIK_HTTP2HTTPS", h2hs)
+# kept so restore-module can re-create the route with the same setting
+agent.set_env("TRAEFIK_LETS_ENCRYPT", lets_encrypt)
 
 # Public base URL used by the backend core for verification/reset mail links
 # and as the JWT server id host. Traefik terminates TLS, so the public scheme
@@ -82,7 +85,12 @@ agent.set_env("LDAP_ENABLED", ldap_enabled)
 agent.set_env("LDAP_URL", ldap_url)
 agent.set_env("LDAP_BASE_DN", ldap_base_dn)
 agent.set_env("LDAP_BIND_DN", ldap_bind_dn)
-agent.set_env("LDAP_BIND_PASSWORD", ldap_bind_password)
+# The bind password is a secret: state/passwords.env, not the module environment.
+# The settings UI sends the stored value back; a blank field keeps it.
+if ldap_bind_password:
+    modsecrets.write({"LDAP_BIND_PASSWORD": ldap_bind_password})
+else:
+    ldap_bind_password = modsecrets.get("LDAP_BIND_PASSWORD")
 agent.set_env("LDAP_GROUP", ldap_group)
 agent.set_env("LDAP_USER_ATTRIBUTE", ldap_user_attribute)
 agent.set_env("LDAP_TITLE", ldap_title)
@@ -109,6 +117,8 @@ if ldap_url and ldap_host:
     if container_ldap_host != ldap_host:
         container_ldap_url = f"{parts.scheme}://{container_ldap_host}:{ldap_port}"
 
+# ldap.env carries the bind password: keep it private
+os.umask(0o077)
 with open("ldap.env.tmp", "w") as efp:
     if ldap_enabled and ldap_url and ldap_base_dn:
         host_url = f"{container_ldap_url}/{ldap_base_dn}"
@@ -142,7 +152,6 @@ with open("ldap.env.tmp", "w") as efp:
         print("# ldap disabled", file=efp)
 os.replace("ldap.env.tmp", "ldap.env")
 
-agent.dump_env()
 
 # Rebuild the LDAPS truststore (default CAs + the AD server certificate).
 if ldap_enabled and ldap_host:

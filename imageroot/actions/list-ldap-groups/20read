@@ -34,7 +34,7 @@ bind_dn = pick("ldap_bind_dn", "LDAP_BIND_DN")
 # password may legitimately contain no surrounding whitespace meaning
 password = data.get("ldap_bind_password")
 if not password:
-    password = os.environ.get("LDAP_BIND_PASSWORD", "")
+    password = modsecrets.get("LDAP_BIND_PASSWORD")
 
 result = {"groups": [], "error": ""}
 

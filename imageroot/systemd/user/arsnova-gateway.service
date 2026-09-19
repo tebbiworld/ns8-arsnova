@@ -38,8 +38,7 @@ ExecStart=/usr/bin/podman run \
     --env HTTP_CLIENT_CORE=http://arsnova-backend-core:8080 \
     --env HTTP_CLIENT_WS_GATEWAY=http://arsnova-ws-gateway:8080 \
     --env HTTP_CLIENT_COMMENT_SERVICE=http://arsnova-comment-service:8080 \
-    --env SECURITY_JWT_PUBLIC_SECRET=${JWT_SECRET} \
-    --env SECURITY_JWT_INTERNAL_SECRET=${JWT_SECRET} \
+    --env-file %S/state/secrets/gateway.env \
     --env SECURITY_JWT_SERVER_ID=arsnova.backend.v3:${TRAEFIK_HOST} \
     ${ARSNOVA_SERVER_GATEWAY_IMAGE} /jetty/start.jar --module=http-forwarded
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-gateway.ctr-id -t 30
