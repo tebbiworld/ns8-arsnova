@@ -2,9 +2,11 @@
 Library    SSHLibrary
 
 *** Keywords ***
+# Every remote command has a time limit: a hanging action must fail the case
+# instead of blocking a runner for an hour.
 Run task
     [Arguments]    ${action}    ${input}    ${decode_json}=${TRUE}    ${rc_expected}=0
-    ${stdout}    ${stderr}    ${rc} =     Execute Command    api-cli run ${action} --data '${input}'    return_stdout=True    return_stderr=True    return_rc=True
+    ${stdout}    ${stderr}    ${rc} =     Execute Command    api-cli run ${action} --data '${input}'    return_stdout=True    return_stderr=True    return_rc=True    timeout=20 min
     Should Be Equal As Integers    ${rc_expected}    ${rc}    Run task ${action} failed!${\n}${stderr}
     IF    ${decode_json} and len($stdout) > 0
         ${response} =    Evaluate    json.loads(r'''${stdout}''')    modules=json
@@ -16,7 +18,7 @@ Run task
 Run on node
     [Documentation]    Run a shell command on the node, fail on a non-zero exit, return stdout.
     [Arguments]    ${command}
-    ${stdout}    ${stderr}    ${rc} =    Execute Command    ${command}    return_stdout=True    return_stderr=True    return_rc=True
+    ${stdout}    ${stderr}    ${rc} =    Execute Command    ${command}    return_stdout=True    return_stderr=True    return_rc=True    timeout=20 min
     Should Be Equal As Integers    ${rc}    0    Command failed: ${command}${\n}${stdout}${\n}${stderr}
     RETURN    ${stdout}
 
@@ -53,7 +55,7 @@ Restore the module from the cluster repository
     [Arguments]    ${repo_id}    ${path}
     ${stdout}    ${stderr}    ${rc} =    Execute Command
     ...    api-cli run cluster/restore-module --data '{"repository":"${repo_id}","path":"${path}","snapshot":"","node":1,"replace":false}'
-    ...    return_stdout=True    return_stderr=True    return_rc=True
+    ...    return_stdout=True    return_stderr=True    return_rc=True    timeout=20 min
     IF    ${rc} != 0
         # the task error alone says little: show which restore step failed and why
         ${journal} =    Execute Command    journalctl --since "-10 min" --no-pager -o cat | grep -E "restore-module|configure-module|Traceback|Error|error|denied|status is" | grep -v "container " | tail -n 60
