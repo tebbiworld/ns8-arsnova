@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Runs before the backup (CWD = state/): dump both PostgreSQL databases.
+
+set -e -o pipefail
+exec 1>&2
+
+rm -rf pgdump.tmp && mkdir -p pgdump.tmp
+podman exec postgresql_auth pg_dump -U "${PG_AUTH_USER}" --format=c arsnovaauth > pgdump.tmp/arsnovaauth.pg_dump
+podman exec postgresql_comment pg_dump -U "${PG_COMMENT_USER}" --format=c arsnovacomment > pgdump.tmp/arsnovacomment.pg_dump
+rm -rf pgdump && mv pgdump.tmp pgdump
+echo "PostgreSQL dumps complete ($(du -sh pgdump | cut -f1))"
