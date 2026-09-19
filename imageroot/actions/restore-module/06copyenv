@@ -17,7 +17,15 @@ import modsecrets
 import servicesecrets
 
 request = json.load(sys.stdin)
-env = request["environment"]
+if "environment" in request:
+    # restore-module: the environment of the backup comes with the request
+    env = request["environment"]
+else:
+    # clone-module (this file is linked there as 20copyenv): the core imports only
+    # the variables the new instance does not have yet, so everything preset by
+    # create-module would keep its default. The core leaves the source instance's
+    # environment in state/environment.clone-module until its last step.
+    env = agent.read_envfile("environment.clone-module")
 
 KEEP = ["TRAEFIK_HOST", "TRAEFIK_HTTP2HTTPS", "TRAEFIK_LETS_ENCRYPT", "ADMIN_ACCOUNT",
         "REGISTERED_ALLOWED_DOMAINS", "SMTP_MANUAL_HOST", "SMTP_MANUAL_FROM", "COUCHDB_USER", "PG_AUTH_USER", "PG_COMMENT_USER",
