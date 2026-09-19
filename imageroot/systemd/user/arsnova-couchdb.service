@@ -29,7 +29,7 @@ ExecStart=/usr/bin/podman run \
     --replace -d --name couchdb \
     --volume arsnova-couchdb:/opt/couchdb/data:Z \
     --env COUCHDB_USER=${COUCHDB_USER} \
-    --env COUCHDB_PASSWORD=${COUCHDB_PASSWORD} \
+    --env-file %S/state/secrets/couchdb.env \
     ${COUCHDB_IMAGE}
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-couchdb.ctr-id -t 60
 ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-couchdb.ctr-id
