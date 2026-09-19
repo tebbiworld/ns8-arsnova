@@ -25,8 +25,8 @@ permissions:
   contents: write
 
 env:
-  UPSTREAM_IMAGES: "docker.io/particify/arsnova-server-core docker.io/particify/arsnova-server-authz docker.io/particify/arsnova-server-comments docker.io/particify/arsnova-server-websocket docker.io/particify/arsnova-server-gateway docker.io/particify/arsnova-server-formatting docker.io/particify/arsnova-webclient docker.io/particify/arsnova-proxy"
-  TAG_REGEX: '^(?P<ver>\d+\.\d+)$'
+  UPSTREAM_IMAGES: "docker.io/particify/arsnova-server-core docker.io/particify/arsnova-server-authz docker.io/particify/arsnova-server-comments docker.io/particify/arsnova-server-websocket docker.io/particify/arsnova-server-gateway docker.io/particify/arsnova-server-formatting docker.io/particify/arsnova-webclient"
+  TAG_REGEX: '^(?P<ver>\d+\.\d+\.\d{8})$'
   UPSTREAM_NAME: "ARSnova / Particify"
   PIN_FILES: "build-images.sh"
   MIN_DAYS: "42"

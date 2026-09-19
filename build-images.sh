@@ -33,18 +33,21 @@ reponame="arsnova"
 #   docker.io/particify/arsnova-server-formatting:3.13-> ARSNOVA_SERVER_FORMATTING_IMAGE
 #   docker.io/particify/arsnova-webclient:3.13       -> ARSNOVA_WEBCLIENT_IMAGE
 #   docker.io/particify/arsnova-proxy:3.13           -> ARSNOVA_PROXY_IMAGE
+# Fully pinned references: dated 3.13 builds where Particify publishes them,
+# digests for the images that only have rolling tags (proxy 3.13, couchdb 3.2,
+# rabbitmq-stomp 3.11-alpine).
 runtime_images=(
-    "docker.io/particify/couchdb:3.2"
+    "docker.io/particify/couchdb@sha256:b3e9f32247241904a67cdcd9f45da07de8416cd038412a1a5ae1cbe01f66fb70"
     "docker.io/library/postgres:13.8-alpine"
-    "docker.io/particify/rabbitmq-stomp:3.11-alpine"
-    "docker.io/particify/arsnova-server-authz:3.13"
-    "docker.io/particify/arsnova-server-core:3.13"
-    "docker.io/particify/arsnova-server-comments:3.13"
-    "docker.io/particify/arsnova-server-websocket:3.13"
-    "docker.io/particify/arsnova-server-gateway:3.13"
-    "docker.io/particify/arsnova-server-formatting:3.13"
-    "docker.io/particify/arsnova-webclient:3.13"
-    "docker.io/particify/arsnova-proxy:3.13"
+    "docker.io/particify/rabbitmq-stomp@sha256:411565bb5c984c65d3325ae8d12594004b4c304b93478d3710f444841ad99239"
+    "docker.io/particify/arsnova-server-authz:3.13.20260613"
+    "docker.io/particify/arsnova-server-core:3.13.20260613"
+    "docker.io/particify/arsnova-server-comments:3.13.20260613"
+    "docker.io/particify/arsnova-server-websocket:3.13.20260613"
+    "docker.io/particify/arsnova-server-gateway:3.13.20260613"
+    "docker.io/particify/arsnova-server-formatting:3.13.20260613"
+    "docker.io/particify/arsnova-webclient:3.13.20260613"
+    "docker.io/particify/arsnova-proxy@sha256:f431909169b6306f5ace6d876944a94a3747b594f229bc3e956f6b2e7382c0bc"
 )
 
 # Create a new empty container image
