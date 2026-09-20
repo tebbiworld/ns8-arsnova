@@ -53,22 +53,3 @@ jobs:
             urls="${image}:${IMAGETAG} "$'\n'"${urls}"
           done
           echo "::notice title=Image URLs::${urls}"
-
-  test:
-    name: "Test on QEMU"
-    # Real NS8 nodes (Rocky 9 and Debian 13) on the GitHub runner, through
-    # stephdl/ns8-ci-actions: clean install, update from the last release, backup
-    # and restore (see tests/). Feature branches only: main and release tags
-    # publish commits that were already tested on their branch, so testing them
-    # again would only burn runner jobs. Run it by hand with workflow_dispatch.
-    needs: publish_images
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.ref_type == 'branch' && github.ref_name != 'main') }}
-    permissions:
-      contents: read
-      pull-requests: write
-    uses: stephdl/ns8-ci-actions/.github/workflows/test-module-qemu.yml@v1
-    with:
-      # tests/10__install.robot branches on $SCENARIO
-      scenarios: '["install","update"]'
-      ui_tests_strategy: never
-      vm_mem: 10240

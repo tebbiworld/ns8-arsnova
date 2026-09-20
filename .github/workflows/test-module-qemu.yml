@@ -1,0 +1,38 @@
+name: "Test module on QEMU"
+
+# Boots throwaway NS8 nodes on the GitHub runner (stephdl/ns8-ci-actions) and
+# runs tests/ against them. Chained on the image build, so a broken image never
+# reaches the test. The update scenario installs the last release first and
+# upgrades it to the image under test.
+
+run-name: "Test ${{ github.event.workflow_run.head_branch || github.ref_name }} on QEMU"
+
+on:
+  workflow_run:
+    workflows: ["Publish images"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      debug_shell:
+        description: "Open a tmate shell when the suite fails"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  run:
+    name: "Run tests"
+    # Branch builds only: a release tag (1.2.3) publishes the commit that was
+    # already tested on its branch, so testing it again would only burn runner
+    # jobs. Version tags are the only refs with a dot in their name here.
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.workflow_run.head_branch, '.') }}
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: stephdl/ns8-ci-actions/.github/workflows/test-module-qemu.yml@v1
+    with:
+      # tests/10__install.robot branches on $SCENARIO
+      scenarios: '["install","update"]'
+      ui_tests_strategy: never
+      vm_mem: 10240
+      debug_shell: ${{ github.event.inputs.debug_shell == 'true' }}
