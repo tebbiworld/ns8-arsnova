@@ -28,7 +28,7 @@ ExecStart=/usr/bin/podman run \
     --volume arsnova-postgres-auth:/var/lib/postgresql/data:Z \
     --env POSTGRES_DB=arsnovaauth \
     --env POSTGRES_USER=${PG_AUTH_USER} \
-    --env POSTGRES_PASSWORD=${PG_AUTH_PASSWORD} \
+    --env-file %S/state/secrets/postgres-auth.env \
     ${POSTGRES_IMAGE}
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-postgres-auth.ctr-id -t 60
 ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/arsnova-postgres-auth.ctr-id

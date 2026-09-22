@@ -33,7 +33,7 @@ ExecStart=/usr/bin/podman run \
     --env RABBITMQ_USERNAME=guest \
     --env RABBITMQ_PASSWORD=guest \
     --env HTTP_CLIENT_AUTH_SERVICE=http://arsnova-auth-service:8080 \
-    --env SECURITY_JWT_SECRET=${JWT_SECRET} \
+    --env-file %S/state/secrets/websocket.env \
     --env SECURITY_JWT_SERVER_ID=arsnova.backend.v3:${TRAEFIK_HOST} \
     ${ARSNOVA_SERVER_WEBSOCKET_IMAGE} /jetty/start.jar --module=http-forwarded
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/arsnova-websocket.ctr-id -t 30

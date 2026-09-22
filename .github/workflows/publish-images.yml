@@ -1,26 +1,55 @@
 name: "Publish images"
 
+# Same behaviour as NethServer/ns8-github-actions publish-branch.yml (build with
+# build-images.sh, push <image>:<branch-or-tag>, and :latest for main and release
+# tags), but the registry login uses the GHCR_TOKEN secret: the ghcr package of
+# this module is user-owned and the repository GITHUB_TOKEN may not write to it.
+
 on:
   push:
   workflow_dispatch:
 
 permissions:
-  packages: write
-  actions: read
-  contents: write
-  security-events: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
-  publish-images:
-    if: github.run_number > 1
-    uses: NethServer/ns8-github-actions/.github/workflows/publish-branch.yml@v1
-  module:
-    needs: publish-images
-    uses: NethServer/ns8-github-actions/.github/workflows/module-info.yml@v1
-  trivy:
-    needs: module
-
-    if: ${{ needs.module.outputs.release == 'stable' || needs.module.outputs.release == 'latest' || github.event_name == 'workflow_dispatch' }}
-    uses: NethServer/ns8-github-actions/.github/workflows/scan-with-trivy.yml@v1
-    with:
-      images: ${{ needs.module.outputs.images }}
+  publish_images:
+    name: "Publish module images"
+    runs-on: ubuntu-latest
+    env:
+      REPOBASE: ghcr.io/${{ github.repository_owner }}
+      IMAGETAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ui/node_modules
+          key: "yarn-${{ hashFiles('ui/yarn.lock') }}"
+      - id: build
+        run: |
+          REPOBASE=${REPOBASE,,}
+          export REPOBASE
+          IMAGETAG=$(printf '%s' "${IMAGETAG}" | tr '/' '-')
+          export IMAGETAG
+          echo "IMAGETAG=${IMAGETAG}" >> "$GITHUB_ENV"
+          bash build-images.sh
+      - id: publish
+        run: |
+          trap 'buildah logout ghcr.io' EXIT
+          buildah login -u "${{ github.repository_owner }}" --password-stdin ghcr.io <<<"${{ secrets.GHCR_TOKEN }}"
+          images=(${{ steps.build.outputs.images }})
+          urls=""
+          for image in "${images[@]}" ; do
+            # runtime images built by build-images.sh may carry the tag already
+            src="${image}"; buildah inspect "${image}:${IMAGETAG}" >/dev/null 2>&1 && src="${image}:${IMAGETAG}"
+            buildah push "${src}" "docker://${image}:${IMAGETAG}"
+            if [[ "${IMAGETAG}" == "main" || "${GITHUB_REF_TYPE}" == "tag" ]]; then
+                buildah push "${src}" "docker://${image}:latest"
+            fi
+            urls="${image}:${IMAGETAG} "$'\n'"${urls}"
+          done
+          echo "::notice title=Image URLs::${urls}"
