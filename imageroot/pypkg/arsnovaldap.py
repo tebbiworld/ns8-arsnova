@@ -46,6 +46,7 @@ import urllib.parse
 
 import agent
 import ldapsettings
+from ldap3.utils.conv import escape_filter_chars
 
 # address under which the containers reach the node loopback (pasta
 # --map-host-loopback); podman itself uses 169.254.1.1 (DNS) and
@@ -61,6 +62,11 @@ PREFIX = "SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_"
 TIMEOUT = 10
 # keys of the module environment that 1.3.0 no longer uses
 OBSOLETE_KEYS = ("LDAP_HOST", "LDAP_PORT")
+# set by the migration of pre-1.3.0 settings: keep their user filter
+LEGACY_FILTER_KEY = "LDAP_LEGACY_FILTER"
+LEGACY_FILTER_DEPENDS = ("LDAP_SOURCE", "LDAP_URL", "LDAP_BASE_DN", "LDAP_BIND_DN", "LDAP_GROUP",
+                         "LDAP_USER_ATTRIBUTE", "LDAP_SCHEMA", "LDAP_TLS_VERIFY")
+DEFAULT_TITLE = "AD"
 LDAP_FIELDS = ("ldap_domain", "ldap_group", "ldap_url", "ldap_base_dn", "ldap_bind_dn",
                "ldap_bind_password", "ldap_user_attribute", "ldap_title")
 
@@ -80,14 +86,18 @@ def enabled(env=None):
 def legacy_updates(env):
     """Environment changes for settings written before 1.3.0, when only a
     server entered by hand existed: keep exactly that behaviour (source
-    custom, Active Directory filter, certificate pinned at start without a
-    host name check). Returns {} when nothing is to change."""
+    custom, certificate pinned at start without a host name check, and the
+    old user filter (LEGACY_FILTER_KEY): no object class, direct group
+    membership only, so neither OpenLDAP servers nor the set of permitted
+    users change). Settings that 1.2.0 did not apply (no URL or base DN)
+    stay off. Returns {} when nothing is to change."""
     if env.get("LDAP_SOURCE"):
         return {}
     url = (env.get("LDAP_URL") or "").strip()
+    complete = bool(url and (env.get("LDAP_BASE_DN") or "").strip())
     updates = {
         "LDAP_SOURCE": "custom" if url else "domain",
-        "LDAP_ENABLED": "true" if enabled(env) else "false",
+        "LDAP_ENABLED": "true" if enabled(env) and complete else "false",
     }
     if url:
         updates.update({
@@ -95,8 +105,26 @@ def legacy_updates(env):
             "LDAP_START_TLS": "false",
             "LDAP_SCHEMA": "ad",
             "LDAP_USER_ATTRIBUTE": env.get("LDAP_USER_ATTRIBUTE") or "sAMAccountName",
+            LEGACY_FILTER_KEY: "true",
         })
     return updates
+
+
+def legacy_filter_snapshot(env=None):
+    """The settings the old user filter depends on (see keep_legacy_filter)."""
+    env = os.environ if env is None else env
+    return tuple(env.get(k, "") for k in LEGACY_FILTER_DEPENDS)
+
+
+def keep_legacy_filter(before):
+    """Called by configure-module after saving: the old user filter of a
+    migrated instance stays only while its server settings are unchanged
+    (a restore or a save of other settings); any change switches to the
+    1.3.0 filter."""
+    if os.environ.get(LEGACY_FILTER_KEY) == "true" and legacy_filter_snapshot() != before:
+        agent.unset_env(LEGACY_FILTER_KEY)
+        os.environ.pop(LEGACY_FILTER_KEY, None)
+        _log("directory login settings changed: the user filter of 1.3.0 applies now", agent.SD_NOTICE)
 
 
 # --- validation ----------------------------------------------------------------
@@ -153,7 +181,8 @@ def _is_attribute_name(name):
 
 def needs_host_loopback():
     """The core must reach the node loopback: ldapproxy of a user domain."""
-    return enabled() and os.environ.get("LDAP_SOURCE", "domain") == "domain"
+    return (enabled() and os.environ.get("LDAP_SOURCE", "domain") == "domain"
+            and bool(os.environ.get("LDAP_DOMAIN")))
 
 
 def configure_host_loopback():
@@ -174,9 +203,12 @@ def configure_host_loopback():
         current = None
     if current == wanted:
         return False
+    if current is not None and not current.startswith(CONTAINERS_CONF_HEADER):
+        # not written by the module: leave it alone (a user domain login then
+        # stays off, discover-ldap logs that the loopback is not mapped)
+        _log(f"{CONTAINERS_CONF} was not written by the module: left unchanged")
+        return False
     if wanted is None:
-        if not current.startswith(CONTAINERS_CONF_HEADER):
-            return False  # not ours: leave it alone
         os.unlink(CONTAINERS_CONF)
     else:
         os.makedirs(os.path.dirname(CONTAINERS_CONF), exist_ok=True)
@@ -249,7 +281,6 @@ def _connection(v):
 
 def _lookup_group_dn(v, group):
     """DN of a group given by name (same search as ldapauth.py of the pilots)."""
-    from ldap3.utils.conv import escape_filter_chars
     name = escape_filter_chars(group)
     if v["LDAP_SCHEMA"] == "ad":
         gfilter = f"(&(objectClass=group)(sAMAccountName={name}))"
@@ -317,7 +348,9 @@ def render():
             # hide the accounts NS8 hides (krbtgt, ldapservice, ...)
             extra = Ldapproxy().get_ldap_users_search_filter_clause(os.environ.get("LDAP_DOMAIN", ""))
         except Exception as exc:
-            _log(f"cannot read the hidden users of the domain: {exc}")
+            # fail secure: without it the service account could log in
+            _log(f"cannot read the hidden users of the domain: {exc}; directory login stays off")
+            return off
     else:
         if v["LDAP_TLS"] == "starttls":
             _log("StartTLS is not supported by ARSnova: use an ldaps:// URL")
@@ -343,9 +376,12 @@ def render():
         except Exception as exc:
             _log(f"cannot look up the group {group}: {exc}; directory login stays off")
             return off
-        from ldap3.utils.conv import escape_filter_chars
         group_filter = f"(memberOf:1.2.840.113556.1.4.1941:={escape_filter_chars(dn)})"
-    if schema == "ad":
+    if os.environ.get(LEGACY_FILTER_KEY) == "true":
+        # migrated pre-1.3.0 settings, unchanged since: the filter of 1.2.0
+        group_filter = f"(memberOf={escape_filter_chars(group)})" if group else ""
+        user_filter = f"(&({attribute}={{0}}){group_filter})" if group else f"({attribute}={{0}})"
+    elif schema == "ad":
         user_filter = (f"(&(objectClass=user)({attribute}={{0}})"
                        f"(!(userAccountControl:1.2.840.113556.1.4.803:=2)){extra}{group_filter})")
     else:
@@ -354,7 +390,7 @@ def render():
     base = urllib.parse.quote(v["LDAP_BASE_DN"], safe="=,")
     lines = [
         f"{PREFIX}ENABLED=true",
-        f"{PREFIX}TITLE={os.environ.get('LDAP_TITLE') or 'LDAP'}",
+        f"{PREFIX}TITLE={os.environ.get('LDAP_TITLE') or DEFAULT_TITLE}",
         f"{PREFIX}HOSTURL={scheme}://{host}:{v['LDAP_PORT']}/{base}",
         # search-based authentication: find the user, then bind as the user
         f"{PREFIX}USERDNPATTERN=",

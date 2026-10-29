@@ -73,11 +73,13 @@ ldap_enabled = bool(data.get("ldap_enabled", arsnovaldap.enabled()))
 agent.set_env("LDAP_ENABLED", "true" if ldap_enabled else "false")
 os.environ["LDAP_ENABLED"] = "true" if ldap_enabled else "false"
 if "ldap_title" in data:
-    agent.set_env("LDAP_TITLE", (data.get("ldap_title") or "").strip() or "LDAP")
+    agent.set_env("LDAP_TITLE", (data.get("ldap_title") or "").strip() or arsnovaldap.DEFAULT_TITLE)
+legacy_settings = arsnovaldap.legacy_filter_snapshot()
 # a client of an earlier version sends no ldap_source: it only knew a server
 # entered by hand
 ldapsettings.apply(data, active=ldap_enabled,
                    legacy_source="custom" if data.get("ldap_url") else "domain")
+arsnovaldap.keep_legacy_filter(legacy_settings)
 for key in arsnovaldap.OBSOLETE_KEYS:
     if key in os.environ:
         agent.unset_env(key)
