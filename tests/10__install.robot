@@ -24,10 +24,29 @@ Configure the module
 ARSnova answers behind Traefik
     Wait Until Keyword Succeeds    90 times    10 seconds    Web client and API are served
 
+Seed data before the update
+    # a room with a vote and a comment (CouchDB, both PostgreSQL databases,
+    # RabbitMQ + websocket) plus one probe row per database: read back after
+    # the update, so a dependency upgrade has to carry the data over
+    Put File    ${CURDIR}/scripts/arsnova_functest.py    /root/arsnova_functest.py    mode=0755
+    ${out} =    Run on node    /usr/local/agent/pyenv/bin/python3 /root/arsnova_functest.py arsnova.ci.test seed /root/arsnova_functest.json
+    Log    ${out}
+    FOR    ${db}    IN    auth    comment
+        Run on node    runagent -m ${module_id} podman exec postgresql_${db} psql -U arsnova${db} -d arsnova${db} -c "CREATE TABLE ci_update_probe (note text); INSERT INTO ci_update_probe VALUES ('kept');"
+    END
+
 Update to the image under test
     Skip If    '${SCENARIO}' != 'update'    scenario is ${SCENARIO}
     Run on node    api-cli run update-module --data '{"force":true,"module_url":"${IMAGE_URL}","instances":["${module_id}"]}'
     Wait Until Keyword Succeeds    90 times    10 seconds    Web client and API are served
+
+Data survives the update
+    ${out} =    Run on node    /usr/local/agent/pyenv/bin/python3 /root/arsnova_functest.py arsnova.ci.test check /root/arsnova_functest.json
+    Log    ${out}
+    FOR    ${db}    IN    auth    comment
+        ${note} =    Run on node    runagent -m ${module_id} podman exec postgresql_${db} psql -U arsnova${db} -d arsnova${db} -tAc "SELECT note FROM ci_update_probe"
+        Should Be Equal    ${note.strip()}    kept
+    END
 
 Manual LDAP settings of the previous release are migrated
     Skip If    '${SCENARIO}' != 'update'    scenario is ${SCENARIO}
