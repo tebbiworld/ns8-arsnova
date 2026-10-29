@@ -82,6 +82,7 @@ buildah config --entrypoint=/ \
     --label="org.nethserver.authorizations=traefik@node:routeadm cluster:accountconsumer" \
     --label="org.nethserver.tcp-ports-demand=1" \
     --label="org.nethserver.rootfull=0" \
+    --label="org.nethserver.volumes=arsnova-couchdb" \
     --label="org.nethserver.images=${runtime_images[*]}" \
     "${container}"
 # Commit the image
