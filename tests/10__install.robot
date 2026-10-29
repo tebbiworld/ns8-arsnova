@@ -18,6 +18,13 @@ Install the module
     &{output} =    Evaluate    ${output}
     Set Global Variable    ${module_id}    ${output.module_id}
 
+A new installation does not allow self-registration
+    Skip If    '${SCENARIO}' != 'install'    an update keeps the setting of the previous release
+    ${cfg} =    Run task    module/${module_id}/get-configuration    {}
+    Should Not Be True    ${cfg['allow_registration']}
+    ${domains} =    Run on node    runagent -m ${module_id} printenv REGISTERED_ALLOWED_DOMAINS
+    Should Be Equal    ${domains.strip()}    ns8.registration.disabled
+
 Configure the module
     Run task    module/${module_id}/configure-module    ${CONFIG}    decode_json=${FALSE}
 

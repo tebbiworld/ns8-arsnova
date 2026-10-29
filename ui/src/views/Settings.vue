@@ -97,6 +97,14 @@
               :showCloseButton="false"
               class="info-tile"
             />
+            <NsInlineNotification
+              v-else
+              kind="warning"
+              :title="$t('settings.allow_registration')"
+              :description="$t('settings.allow_registration_on_hint')"
+              :showCloseButton="false"
+              class="info-tile"
+            />
 
             <h4 class="section">{{ $t("settings.mail_section") }}</h4>
             <cv-text-input
@@ -235,7 +243,7 @@ export default {
       lets_encrypt: false,
       http2https: false,
       admin_email: "",
-      allow_registration: true,
+      allow_registration: false,
       smtp_host: "",
       smtp_from: "",
       public_url: "",

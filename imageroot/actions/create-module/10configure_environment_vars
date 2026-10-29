@@ -28,9 +28,11 @@ agent.set_env("PG_COMMENT_USER", "arsnovacomment")
 agent.set_env("ADMIN_ACCOUNT", "")
 
 # Self-registration: the registered (e-mail/password) provider only allows a
-# new sign-up when the address matches one of these domain patterns. "*" means
-# anyone may register (default). The Settings page can switch this to a
-# non-matching sentinel to block new registrations while keeping login working.
-agent.set_env("REGISTERED_ALLOWED_DOMAINS", "*")
+# new sign-up when the address matches one of these domain patterns. A new
+# instance starts with the sentinel that matches no address, i.e. nobody can
+# create an account from the login page until an administrator switches
+# self-registration on in the Settings page ("*", anyone). Login of existing
+# accounts is not affected. Instances created before 1.3.0 keep their value.
+agent.set_env("REGISTERED_ALLOWED_DOMAINS", "ns8.registration.disabled")
 
 # Persist the environment for the systemd units.

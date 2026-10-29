@@ -53,8 +53,15 @@ api-cli run module/arsnova1/configure-module --data '{
 }'
 ```
 
-Open `https://arsnova.example.org`, register an account and verify it. ARSnova
-sends the verification code by e-mail via the cluster smarthost. ARSnova's core
+Self-registration is **off** on a new installation: nobody can create an
+account from the login page. Either let people log in with a directory account
+(see [Directory login](#directory-login-adldap)) or switch "Allow
+self-registration" on in the Settings page (`"allow_registration": true`).
+Instances installed before 1.3.0 keep their setting.
+
+With self-registration on, open `https://arsnova.example.org`, register an
+account and verify it. ARSnova sends the verification code by e-mail via the
+cluster smarthost. ARSnova's core
 only supports a plain SMTP relay (port 25, no authentication); if no usable
 relay is configured the code is written to the core logs:
 
