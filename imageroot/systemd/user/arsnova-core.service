@@ -49,6 +49,7 @@ ExecStart=/usr/bin/podman run \
     --env-file %S/state/admin.env \
     --env-file %S/state/ldap.env \
     --volume %S/state/ad-truststore.p12:/etc/ssl/ad-truststore.p12:ro,Z \
+    --volume %S/etc/jndi.properties:/opt/java/openjdk/conf/jndi.properties:ro,Z \
     --env SYSTEM_API_PROXYPATH=/api \
     --env SYSTEM_ROOT_URL=${ARSNOVA_ROOT_URL} \
     --env SYSTEM_SOCKETIO_BINDADDRESS=0.0.0.0 \

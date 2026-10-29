@@ -65,7 +65,8 @@ TIMEOUT = 10
 # provider list set by environment variables replaces that list as a whole, so
 # without this value the timeout is 0: a server that does not answer keeps
 # the login waiting for the TCP timeout of the system, and the gateway answers
-# 504 after 60 s. ARSnova 3.13 has no read timeout setting.
+# 504 after 60 s. ARSnova 3.13 has no read timeout setting; the read timeout
+# comes from etc/jndi.properties (mounted into the core's Java runtime).
 CONNECT_TIMEOUT_MS = 5000
 # keys of the module environment that 1.3.0 no longer uses
 OBSOLETE_KEYS = ("LDAP_HOST", "LDAP_PORT")
