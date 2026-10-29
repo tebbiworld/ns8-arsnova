@@ -17,9 +17,16 @@
         "ldap_url": { "type": "string" },
         "ldap_base_dn": { "type": "string" },
         "ldap_bind_dn": { "type": "string" },
-        "ldap_bind_password": { "type": "string" },
+        "ldap_bind_password_set": { "type": "boolean" },
+        "ldap_source": { "type": "string", "enum": ["domain", "custom"] },
+        "ldap_domain": { "type": "string" },
+        "ldap_start_tls": { "type": "boolean" },
+        "ldap_tls_verify": { "type": "boolean" },
+        "ldap_schema": { "type": "string", "enum": ["ad", "rfc2307"] },
+        "user_domains": { "type": "array", "items": { "type": "string" } },
         "ldap_group": { "type": "string" },
         "ldap_user_attribute": { "type": "string" },
         "ldap_title": { "type": "string" }
-    }
+    },
+    "not": { "required": ["ldap_bind_password"] }
 }

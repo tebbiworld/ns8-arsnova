@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# ExecStartPre of arsnova-core (through runagent): write state/ldap.env (the
+# Spring Security LDAP settings of the core) and state/ldap-podman.env from
+# the stored directory login (pypkg/ldapsettings.py, pypkg/arsnovaldap.py).
+# For a user domain the node's ldapproxy and its bind account are read on
+# every start, so a changed bind password is picked up by a restart
+# (events/user-domain-changed). ldap.env carries the bind password: mode
+# 0600, regenerated, not part of the backup. Never fails the start: on any
+# problem the directory login stays off and the reason is logged.
+
+import sys
+
+import agent
+import arsnovaldap
+
+try:
+    arsnovaldap.discover()
+except Exception as exc:  # the core must start anyway
+    print(agent.SD_ERR + f"discover-ldap: {type(exc).__name__}: {exc}; directory login off", file=sys.stderr)
+    with open(arsnovaldap.LDAP_ENV, "w") as fp:
+        fp.write("# directory login off (discover-ldap failed)\n")
+    with open(arsnovaldap.PODMAN_ENV, "w") as fp:
+        fp.write("LDAP_PODMAN_ARGS=\n")

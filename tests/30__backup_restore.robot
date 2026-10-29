@@ -26,6 +26,10 @@ The restored instance has data, settings and secrets
     Should Contain    ${out}    pre-backup
     ${cfg} =    Run task    module/${restored_id}/get-configuration    {}
     Should Be Equal    ${cfg['admin_email']}    admin@ci.test
+    # directory login: settings and the bind password (passwords.env) come back
+    Should Be Equal    ${cfg['ldap_source']}    custom
+    Should Be Equal    ${cfg['ldap_url']}    ldaps://ldap.ci.test:636
+    Should Be True    ${cfg['ldap_bind_password_set']}
     Secrets are kept out of the module environment    ${restored_id}
     # authz can only log in to its restored database with the restored password
     Wait Until Keyword Succeeds    60 times    10 seconds

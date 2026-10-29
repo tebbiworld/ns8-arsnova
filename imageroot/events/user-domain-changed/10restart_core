@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# The settings of the user domain changed (e.g. a new bind password or
+# provider): restart the core, bin/discover-ldap reads them again at start.
+
+import json
+import os
+import sys
+
+import agent
+import arsnovaldap
+
+event = json.load(sys.stdin)
+if (not arsnovaldap.enabled() or os.environ.get("LDAP_SOURCE", "domain") != "domain"
+        or event.get("domain") != os.environ.get("LDAP_DOMAIN")):
+    sys.exit(0)
+agent.run_helper("systemctl", "--user", "-T", "try-restart", "arsnova-core.service")

@@ -53,42 +53,77 @@
         "ldap_enabled": {
             "type": "boolean",
             "title": "Enable AD/LDAP login",
-            "description": "Allow login with Active Directory / LDAP accounts."
+            "description": "Allow login with directory accounts (a user domain of this cluster or an LDAP server of its own)."
         },
         "ldap_url": {
             "type": "string",
             "title": "LDAP URL",
-            "description": "LDAPS URL of the directory server, e.g. ldaps://ad.example.org:636"
+            "description": "ldap_source custom: URL of the directory server, e.g. ldaps://dc.example.org:636 (StartTLS is not supported by ARSnova).",
+            "maxLength": 1024
         },
         "ldap_base_dn": {
             "type": "string",
             "title": "Base DN",
-            "description": "Search base, e.g. DC=ad,DC=example,DC=org"
+            "description": "ldap_source custom: search base, e.g. DC=ad,DC=example,DC=org",
+            "maxLength": 1024
         },
         "ldap_bind_dn": {
             "type": "string",
             "title": "Bind DN",
-            "description": "Service account used to search the directory, e.g. ldapservice@ad.example.org"
+            "description": "ldap_source custom: service account used to search the directory.",
+            "maxLength": 1024
         },
         "ldap_bind_password": {
             "type": "string",
             "title": "Bind password",
-            "description": "Password of the bind/service account."
+            "description": "ldap_source custom: password of the service account. Empty keeps the stored password; never returned by get-configuration.",
+            "maxLength": 512
         },
         "ldap_group": {
             "type": "string",
-            "title": "Access group DN",
-            "description": "Distinguished name of the group whose members may log in. Empty means any directory user."
+            "title": "Access group",
+            "description": "Only members may log in (Active Directory, nested groups count): a group name, or a DN for ldap_source custom. Empty: every directory user.",
+            "maxLength": 1024
         },
         "ldap_user_attribute": {
             "type": "string",
             "title": "Login attribute",
-            "description": "Attribute matched against the entered user name. Defaults to sAMAccountName (Active Directory)."
+            "description": "ldap_source custom: login attribute. Empty: sAMAccountName (ad) or uid (rfc2307).",
+            "maxLength": 1024
         },
         "ldap_title": {
             "type": "string",
             "title": "Provider label",
-            "description": "Label shown on the login page for this provider. Defaults to 'AD'."
+            "description": "Label shown on the login page for this provider. Defaults to 'AD'.",
+            "maxLength": 64
+        },
+        "ldap_source": {
+            "type": "string",
+            "enum": ["domain", "custom"],
+            "title": "Directory",
+            "description": "domain: a user domain of this cluster (recommended, no credentials stored in the module); custom: an LDAP server of its own."
+        },
+        "ldap_domain": {
+            "type": "string",
+            "maxLength": 253,
+            "title": "User domain",
+            "description": "Name of the user domain (ldap_source domain)."
+        },
+        "ldap_start_tls": {
+            "type": "boolean",
+            "title": "StartTLS",
+            "description": "Not supported by ARSnova: must be false."
+        },
+        "ldap_tls_verify": {
+            "type": "boolean",
+            "title": "Verify the server certificate",
+            "description": "ldap_source custom with ldaps: check the certificate against the public CAs and the host name. false: trust the certificate the server presents (renewed at every start), no host name check."
+        },
+        "ldap_schema": {
+            "type": "string",
+            "enum": ["ad", "rfc2307"],
+            "title": "Directory type",
+            "description": "ldap_source custom: ad (Active Directory, Samba) or rfc2307 (OpenLDAP)."
         }
     }
 }

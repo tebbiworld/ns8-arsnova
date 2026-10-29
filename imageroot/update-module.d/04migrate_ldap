@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Before 1.3.0 the directory login only knew a server entered by hand, with
+# the server certificate pinned and no host name check. Keep exactly that
+# behaviour (source "custom", see arsnovaldap.legacy_updates); the admin can
+# switch to a user domain of the cluster in the settings. The node-address
+# detection of 1.1.1 (LDAP_HOST/LDAP_PORT) is replaced by bin/discover-ldap.
+
+import os
+import sys
+
+import agent
+import arsnovaldap
+
+updates = arsnovaldap.legacy_updates(os.environ)
+if updates:
+    agent.mset_env(updates)
+    print(f"directory login settings migrated: source {updates['LDAP_SOURCE']}", file=sys.stderr)
+for key in arsnovaldap.OBSOLETE_KEYS:
+    if key in os.environ:
+        agent.unset_env(key)

@@ -39,8 +39,12 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
             <cv-toggle
               value="http2https"
@@ -49,8 +53,12 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
             <NsInlineNotification
               kind="info"
@@ -74,8 +82,12 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
             <NsInlineNotification
               v-if="!allow_registration"
@@ -118,89 +130,47 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
-            <div v-if="ldap_enabled">
+            <template v-if="ldap_enabled">
               <cv-text-input
-                :label="$t('settings.ldap_url')"
-                v-model.trim="ldap_url"
-                placeholder="ldaps://ad.example.org:636"
+                :label="$t('settings.ldap_title')"
+                v-model.trim="ldap_title"
+                :helper-text="$t('settings.ldap_title_helper')"
+                :invalid-message="error.ldap_title"
                 :disabled="loading.getConfiguration || loading.configureModule"
+                ref="ldap_title"
                 class="spaced"
               ></cv-text-input>
-              <cv-text-input
-                :label="$t('settings.ldap_base_dn')"
-                v-model.trim="ldap_base_dn"
-                placeholder="DC=ad,DC=example,DC=org"
+              <LdapLogin
+                v-model="ldap"
+                :userDomains="user_domains"
+                :bindPasswordSet="ldap_bind_password_set"
+                :errors="ldapErrors"
                 :disabled="loading.getConfiguration || loading.configureModule"
-                class="spaced"
-              ></cv-text-input>
-              <cv-text-input
-                :label="$t('settings.ldap_bind_dn')"
-                v-model.trim="ldap_bind_dn"
-                placeholder="ldapservice@ad.example.org"
-                :disabled="loading.getConfiguration || loading.configureModule"
-                class="spaced"
-              ></cv-text-input>
-              <cv-text-input
-                type="password"
-                :label="$t('settings.ldap_bind_password')"
-                v-model="ldap_bind_password"
-                :disabled="loading.getConfiguration || loading.configureModule"
-                class="spaced"
-              ></cv-text-input>
-              <cv-text-input
-                :label="$t('settings.ldap_user_attribute')"
-                v-model.trim="ldap_user_attribute"
-                placeholder="sAMAccountName"
-                :disabled="loading.getConfiguration || loading.configureModule"
-                class="spaced"
-              ></cv-text-input>
-              <div class="spaced">
-                <NsButton
-                  kind="tertiary"
-                  size="small"
-                  :loading="loading.listLdapGroups"
-                  :disabled="loading.listLdapGroups || !ldap_url || !ldap_bind_dn"
-                  @click.prevent="loadLdapGroups"
-                  >{{ $t("settings.ldap_load_groups") }}</NsButton
-                >
-              </div>
-              <cv-dropdown
-                v-if="ldapGroups.length"
-                :label="$t('settings.ldap_group')"
-                v-model="ldap_group"
-                :disabled="loading.getConfiguration || loading.configureModule"
-                class="spaced"
-              >
-                <cv-dropdown-item value="">{{
-                  $t("settings.ldap_group_any")
-                }}</cv-dropdown-item>
-                <cv-dropdown-item
-                  v-for="g in ldapGroups"
-                  :key="g.dn"
-                  :value="g.dn"
-                  >{{ g.name }}</cv-dropdown-item
-                >
-              </cv-dropdown>
-              <cv-text-input
-                v-else
-                :label="$t('settings.ldap_group')"
-                v-model.trim="ldap_group"
-                :helper-text="$t('settings.ldap_group_helper')"
-                :disabled="loading.getConfiguration || loading.configureModule"
-                class="spaced"
-              ></cv-text-input>
+                ref="ldap"
+              />
               <NsInlineNotification
-                v-if="error.listLdapGroups"
-                kind="warning"
-                :title="$t('settings.ldap_load_groups')"
-                :description="error.listLdapGroups"
+                v-for="msg in ldapChoiceErrors"
+                :key="msg"
+                kind="error"
+                :title="msg"
                 :showCloseButton="false"
                 class="info-tile"
               />
-            </div>
+              <NsInlineNotification
+                kind="info"
+                :title="$t('settings.ldap_limits_title')"
+                :description="$t('settings.ldap_limits')"
+                :showCloseButton="false"
+                class="info-tile"
+              />
+            </template>
 
             <cv-row v-if="error.configureModule">
               <cv-column>
@@ -236,9 +206,15 @@ import {
   IconService,
   PageTitleService,
 } from "@nethserver/ns8-ui-lib";
+import LdapLogin, {
+  LDAP_FIELDS,
+  ldapFromConfiguration,
+  validateLdap,
+} from "@/components/LdapLogin";
 
 export default {
   name: "Settings",
+  components: { LdapLogin },
   mixins: [
     TaskService,
     IconService,
@@ -264,29 +240,32 @@ export default {
       smtp_from: "",
       public_url: "",
       ldap_enabled: false,
-      ldap_url: "",
-      ldap_base_dn: "",
-      ldap_bind_dn: "",
-      ldap_bind_password: "",
-      ldap_user_attribute: "sAMAccountName",
       ldap_title: "AD",
-      ldap_group: "",
-      ldapGroups: [],
+      ldap: ldapFromConfiguration({}),
+      ldap_bind_password_set: false,
+      user_domains: [],
+      ldapErrors: {},
       loading: {
         getConfiguration: false,
         configureModule: false,
-        listLdapGroups: false,
       },
       error: {
         getConfiguration: "",
         configureModule: "",
-        listLdapGroups: "",
         host: "",
+        ldap_title: "",
       },
     };
   },
   computed: {
     ...mapState(["instanceName", "core", "appName"]),
+    ldapChoiceErrors() {
+      // LdapLogin shows messages only below its text fields: errors of its
+      // toggles and radio groups (e.g. StartTLS) are shown here
+      return ["ldap_source", "ldap_start_tls", "ldap_tls_verify", "ldap_schema"]
+        .filter((f) => this.ldapErrors[f])
+        .map((f) => this.$t(this.ldapErrors[f]));
+    },
   },
   beforeRouteEnter(to, from, next) {
     next((vm) => {
@@ -350,61 +329,30 @@ export default {
       this.smtp_from = config.smtp_from || "";
       this.public_url = config.public_url || "";
       this.ldap_enabled = !!config.ldap_enabled;
-      this.ldap_url = config.ldap_url || "";
-      this.ldap_base_dn = config.ldap_base_dn || "";
-      this.ldap_bind_dn = config.ldap_bind_dn || "";
-      this.ldap_bind_password = config.ldap_bind_password || "";
-      this.ldap_user_attribute = config.ldap_user_attribute || "sAMAccountName";
       this.ldap_title = config.ldap_title || "AD";
-      this.ldap_group = config.ldap_group || "";
+      this.user_domains = config.user_domains || [];
+      this.ldap = ldapFromConfiguration(config);
+      this.ldap_bind_password_set = !!config.ldap_bind_password_set;
       this.focusElement("host");
-    },
-    async loadLdapGroups() {
-      this.loading.listLdapGroups = true;
-      this.error.listLdapGroups = "";
-      const taskAction = "list-ldap-groups";
-      const eventId = this.getUuid();
-      this.core.$root.$once(`${taskAction}-aborted-${eventId}`, (tr) => {
-        console.error(`${taskAction} aborted`, tr);
-        this.error.listLdapGroups = this.$t("error.generic_error");
-        this.loading.listLdapGroups = false;
-      });
-      this.core.$root.$once(`${taskAction}-completed-${eventId}`, (tc, tr) => {
-        this.loading.listLdapGroups = false;
-        const out = tr.output || {};
-        if (out.error) {
-          this.error.listLdapGroups = out.error;
-        }
-        this.ldapGroups = out.groups || [];
-      });
-      const res = await to(
-        this.createModuleTaskForApp(this.instanceName, {
-          action: taskAction,
-          data: {
-            ldap_url: this.ldap_url,
-            ldap_base_dn: this.ldap_base_dn,
-            ldap_bind_dn: this.ldap_bind_dn,
-            ldap_bind_password: this.ldap_bind_password,
-          },
-          extra: {
-            title: this.$t("settings.ldap_load_groups"),
-            isNotificationHidden: true,
-            eventId,
-          },
-        })
-      );
-      if (res[0]) {
-        this.error.listLdapGroups = this.getErrorMessage(res[0]);
-        this.loading.listLdapGroups = false;
-      }
     },
     validateConfigureModule() {
       this.clearErrors(this);
+      this.ldapErrors = {};
       let isValidationOk = true;
       if (!this.host) {
         this.error.host = "common.required";
         this.focusElement("host");
         isValidationOk = false;
+      }
+      if (this.ldap_enabled) {
+        const ldapErrors = validateLdap(this.ldap, this.ldap_bind_password_set);
+        if (this.ldap.ldap_source === "custom" && this.ldap.ldap_start_tls)
+          ldapErrors.push(["ldap_start_tls", "settings.start_tls_unsupported"]);
+        for (const [field, msg] of ldapErrors)
+          this.$set(this.ldapErrors, field, msg);
+        if (ldapErrors.length && isValidationOk)
+          this.$refs.ldap.focus(ldapErrors[0][0]);
+        if (ldapErrors.length) isValidationOk = false;
       }
       return isValidationOk;
     },
@@ -413,7 +361,17 @@ export default {
       let focusAlreadySet = false;
       for (const validationError of validationErrors) {
         const field = validationError.field;
-        if (field !== "(root)") {
+        if (LDAP_FIELDS.includes(field)) {
+          // shared messages under ldap_login, ARSnova limits under settings
+          const key = this.$te("ldap_login." + validationError.error)
+            ? "ldap_login." + validationError.error
+            : "settings." + validationError.error;
+          this.$set(this.ldapErrors, field, key);
+          if (!focusAlreadySet && this.$refs.ldap) {
+            this.$refs.ldap.focus(field);
+            focusAlreadySet = true;
+          }
+        } else if (field !== "(root)") {
           this.error[field] = this.$t("settings." + validationError.error);
           if (!focusAlreadySet) {
             this.focusElement(field);
@@ -455,13 +413,8 @@ export default {
             smtp_host: this.smtp_host,
             smtp_from: this.smtp_from,
             ldap_enabled: this.ldap_enabled,
-            ldap_url: this.ldap_url,
-            ldap_base_dn: this.ldap_base_dn,
-            ldap_bind_dn: this.ldap_bind_dn,
-            ldap_bind_password: this.ldap_bind_password,
-            ldap_user_attribute: this.ldap_user_attribute,
             ldap_title: this.ldap_title,
-            ldap_group: this.ldap_group,
+            ...this.ldap,
           },
           extra: {
             title: this.$t("settings.configure_instance", {

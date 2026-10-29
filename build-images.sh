@@ -72,7 +72,7 @@ buildah add "${container}" ui/dist /ui
 # Setup the entrypoint, reserve a single TCP port (the front proxy), declare the
 # runtime images and mark the module as rootless.
 buildah config --entrypoint=/ \
-    --label="org.nethserver.authorizations=traefik@node:routeadm" \
+    --label="org.nethserver.authorizations=traefik@node:routeadm cluster:accountconsumer" \
     --label="org.nethserver.tcp-ports-demand=1" \
     --label="org.nethserver.rootfull=0" \
     --label="org.nethserver.images=${runtime_images[*]}" \

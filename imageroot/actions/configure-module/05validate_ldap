@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Directory login: check the settings when the request changes them (shared
+# checks in pypkg/ldapsettings.py, ARSnova limits in pypkg/arsnovaldap.py).
+
+import json
+import os
+import sys
+
+import agent
+import arsnovaldap
+import ldapsettings
+
+agent.set_weight(os.path.basename(__file__), 0)
+
+data = json.load(sys.stdin)
+if not any(k.startswith("ldap_") for k in data):
+    sys.exit(0)
+active = bool(data.get("ldap_enabled", arsnovaldap.enabled()))
+if "ldap_source" not in data and not os.environ.get("LDAP_SOURCE"):
+    # a client of an earlier version: only a server entered by hand existed
+    data["ldap_source"] = "custom" if data.get("ldap_url") else "domain"
+checks = ldapsettings.validate(data, active=active) + arsnovaldap.validate(data, active=active)
+errors, seen = [], set()
+for field, error in checks:
+    if field in seen:
+        continue  # one message per field
+    seen.add(field)
+    errors.append({"field": field, "parameter": field, "error": error,
+                   "value": "" if field == "ldap_bind_password" else data.get(field, "")})
+if errors:
+    agent.set_status("validation-failed")
+    json.dump(errors, fp=sys.stdout)
+    sys.exit(2)

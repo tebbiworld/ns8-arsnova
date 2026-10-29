@@ -34,6 +34,15 @@ units=(
 )
 systemctl --user enable "${units[@]}"
 
+# A changed pasta option (node loopback for a user domain, see
+# pypkg/arsnovaldap.py) applies only to a new rootless network, which podman
+# creates when the first container starts after all of them stopped.
+if [[ -f .netns-restart ]]; then
+    echo "rootless network options changed: stopping every container first"
+    systemctl --user stop "${units[@]}"
+    rm -f .netns-restart
+fi
+
 # (Re)start the whole stack so configuration changes are applied. The units are
 # restarted as a set (systemd orders them by their After= dependencies); the
 # network unit only Wants its containers, so it is restarted explicitly here

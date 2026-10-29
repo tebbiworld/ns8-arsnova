@@ -5,41 +5,42 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-# Build the Java truststore used by the backend core for LDAPS.
+# Build the Java truststore the backend core uses for an LDAP server of its
+# own with the certificate check switched off (pypkg/arsnovaldap.py): a copy
+# of the JDK default CAs plus the certificate the server presents now (trust
+# on first use, renewed on every start of the core). With the check on the
+# core uses the JDK CAs and verifies the host name; this store is not used.
 #
-# The store is a copy of the JDK default CA bundle (so all public CAs keep
-# working) with the AD/LDAP server certificate added on top. That makes LDAPS
-# work both with publicly-trusted certificates and with the self-signed
-# certificates that on-prem Active Directory / Samba commonly present.
-#
-# Reads LDAP_HOST / LDAP_PORT from the module environment (set by
-# configure-module). Runs in the module state directory. keytool is taken from
-# the core image; openssl from the host fetches the certificate.
+# Reads LDAP_HOST / LDAP_PORT from the environment, runs in the module state
+# directory. keytool comes from the core image, openssl from the node. If the
+# server cannot be reached the previous store is kept.
 
 set -e
 exec 1>&2
 
 TS=ad-truststore.p12
-HOST="${LDAP_HOST:-}"
+HOST="${LDAP_HOST:?LDAP_HOST not set}"
 PORT="${LDAP_PORT:-636}"
 IMG="${ARSNOVA_SERVER_CORE_IMAGE:?core image not set}"
 
-# Best-effort: fetch the certificate the directory server presents.
-rm -f ad-ldaps.pem
-if [ -n "$HOST" ]; then
-    echo | openssl s_client -connect "$HOST:$PORT" 2>/dev/null \
-        | openssl x509 -outform PEM > ad-ldaps.pem 2>/dev/null || true
+pem=$(mktemp --suffix=.pem ad-ldaps.XXXXXX)
+trap 'rm -f "$pem"' EXIT
+if ! timeout 15 openssl s_client -connect "$HOST:$PORT" -servername "$HOST" </dev/null 2>/dev/null \
+        | openssl x509 -outform PEM > "$pem" 2>/dev/null || [ ! -s "$pem" ]; then
+    if [ -s "$TS" ]; then
+        echo "build-ldap-truststore: cannot read the certificate of $HOST:$PORT, keeping the previous store"
+        exit 0
+    fi
+    echo "build-ldap-truststore: cannot read the certificate of $HOST:$PORT"
+    exit 1
 fi
 
-# Build the store inside the core image (which ships keytool + the cacerts).
-podman run --rm -v "$PWD":/state:Z --entrypoint sh "$IMG" -c '
+# no network needed inside: keytool works on the mounted state directory
+podman run --rm --network none -v "$PWD":/state:Z --entrypoint sh "$IMG" -c '
     set -e
     cp /opt/java/openjdk/lib/security/cacerts /state/'"$TS"'.tmp
-    if [ -s /state/ad-ldaps.pem ]; then
-        keytool -importcert -noprompt -alias ad-ldaps \
-            -file /state/ad-ldaps.pem \
-            -keystore /state/'"$TS"'.tmp -storepass changeit
-    fi
+    keytool -importcert -noprompt -alias ad-ldaps -file "/state/$1" \
+        -keystore /state/'"$TS"'.tmp -storepass changeit
     mv -f /state/'"$TS"'.tmp /state/'"$TS"'
-'
-echo "build-ldap-truststore: done (host=${HOST:-none})"
+' sh "$(basename "$pem")"
+echo "build-ldap-truststore: done ($HOST:$PORT)"

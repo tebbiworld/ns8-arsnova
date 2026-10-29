@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.3.0 — unreleased
+
+### Added
+
+- **Directory login through a user domain of the cluster.** The settings offer
+  a user domain of this cluster (recommended: no credentials stored in the
+  module, the bind account is read through the node's ldapproxy at every start
+  and followed on `user-domain-changed`) or, as before, an LDAP server of its
+  own. Same settings and settings page component as ns8-clamav and
+  ns8-idevice-backup (`pypkg/ldapsettings.py`, `LdapLogin.vue`); the module
+  declares `cluster:accountconsumer`. The group is picked from a list for a
+  user domain; nested Active Directory groups count, disabled accounts cannot
+  log in.
+
+### Changed
+
+- **The bind password no longer leaves the module.** `get-configuration`
+  returns `ldap_bind_password_set` instead of the password; an empty password
+  field keeps the stored one.
+- **Certificate check for an LDAP server of its own.** With the check on, the
+  core verifies the certificate against the public CAs and checks the host
+  name (no more `disableEndpointIdentification`). With the check off, the
+  certificate the server presents is trusted when the core starts. A server on
+  the same node keeps its host name (`--add-host … :host-gateway`) instead of
+  being replaced by `host.containers.internal`.
+- Existing manual LDAP settings are migrated on update unchanged in behaviour:
+  source "LDAP server of its own", certificate check off, and the user filter
+  of 1.2.0 (direct group membership, no object class, so OpenLDAP servers keep
+  working) until the directory settings are changed and saved. Settings that
+  1.2.0 did not apply (no URL or base DN) are switched off.
+- `list-ldap-groups` lists the groups of a user domain (input `domain`).
+
+### Fixed
+
+- `list-ldap-groups` failed when no password was typed in (missing import).
+
 ## 1.2.0 — 2026-09-19
 
 Alignment with the NethServer module conventions (NethServer/agents skills).
