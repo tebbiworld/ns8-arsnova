@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Start the message broker on an empty volume when its image changes.
+#
+# RabbitMQ 4 refuses the data directory of 3.11: an upgrade has to pass
+# every minor release in between with all feature flags enabled. ARSnova
+# keeps nothing in the broker that has to survive a restart: the services
+# declare their exchanges and queues each time they connect, the messages
+# are short-lived events between the services and the live view, and the
+# volume is not part of the backup (etc/state-include.conf) either, so a
+# restored or cloned instance starts with an empty broker anyway.
+#
+# 05pullimages of the core update-module action sets PREV_<NAME>_IMAGE to
+# the image the instance ran before. The services are restarted afterwards
+# by 90restart_services.
+
+set -e -o pipefail
+exec 1>&2
+
+volume=arsnova-rabbitmq
+
+if [[ -z "${PREV_RABBITMQ_STOMP_IMAGE}" || "${PREV_RABBITMQ_STOMP_IMAGE}" == "${RABBITMQ_STOMP_IMAGE}" ]]; then
+    exit 0
+fi
+if ! podman volume exists "${volume}"; then
+    exit 0
+fi
+
+systemctl --user stop arsnova-rabbitmq.service
+podman volume rm "${volume}" >/dev/null
+echo "RabbitMQ image changed (${PREV_RABBITMQ_STOMP_IMAGE} -> ${RABBITMQ_STOMP_IMAGE}): broker volume ${volume} emptied"

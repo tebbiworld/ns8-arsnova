@@ -13,12 +13,14 @@ Usage: arsnova_functest.py <host> seed|check <state.json>
          Q&A on; guest B joins, votes and posts a question (comment), which
          must reach A over the STOMP websocket; the ids go to state.json
   check  a new guest joins the seeded room and reads the room, the question,
-         the vote count and the comment back (after an update or restore)
+         the vote count and the comment back (after an update or restore);
+         a further comment must again reach the owner's websocket
 
 Talks to Traefik on 127.0.0.1 with the given Host header (the certificate
 is self-signed in CI). Uses the agent's Python environment, which ships
 requests and aiohttp. Exit code 0 means every step passed; the only
-credentials involved are throwaway guest tokens, which are not printed.
+credentials involved are throwaway guest tokens of the test instance
+(kept in the state file for the check, never printed).
 """
 
 import asyncio
@@ -132,7 +134,8 @@ def seed(api, state_file):
         {"roomId": room_id, "creatorId": user_id(participant), "body": COMMENT}))))
     print("seed ok: room created, question published, vote counted, comment pushed over the websocket")
     with open(state_file, "w") as fp:
-        json.dump({"room_id": room_id, "content_id": content["id"], "comment_id": comment["id"]}, fp)
+        json.dump({"room_id": room_id, "content_id": content["id"], "comment_id": comment["id"],
+                   "owner_token": owner}, fp)
 
 
 def vote_count(api, token, room_id, content_id):
@@ -160,7 +163,11 @@ def check(api, state_file):
     if room["name"] != ROOM_NAME or content["body"] != QUESTION or votes != 1 or comment["body"] != COMMENT:
         sys.exit(f"FAIL data differs: room={room['name']!r} question={content['body']!r} "
                  f"votes={votes} comment={comment['body']!r}")
-    print(f"check ok: room {room['shortId']}, question, 1 vote and the comment are there")
+    asyncio.run(expect_comment_event(api.host, state["owner_token"], room_id, lambda: api.call(
+        "POST", f"/room/{room_id}/comment/", reader,
+        {"roomId": room_id, "creatorId": user_id(reader), "body": COMMENT + " 2"})))
+    print(f"check ok: room {room['shortId']}, question, 1 vote and the comment are there; "
+          "a new comment reached the websocket")
 
 
 def main():

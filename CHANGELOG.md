@@ -36,6 +36,14 @@
   which no longer receives security updates. CouchDB upgrades the database
   files in place when it starts; there is no way back to 3.2 other than
   restoring a backup made before the update.
+- **RabbitMQ 3.11 → 4.3** (`particify/rabbitmq-stomp:4.3-alpine`, RabbitMQ
+  4.3.1, as in Particify's 3.13 compose file). RabbitMQ 4 cannot start on the
+  data of 3.11 (feature flags; the supported path passes every minor release).
+  The broker holds no data that must survive: the services declare their
+  queues at every start and the messages are short-lived events. On update,
+  `update-module.d/10reset_rabbitmq` therefore starts the broker on an empty
+  volume whenever its image changes. Events in flight during the update are
+  lost (the services are restarted at the same time anyway).
 
 ### Fixed
 
