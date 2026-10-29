@@ -36,6 +36,8 @@
         "admin_email": "Administrator-Konto (optional)",
         "admin_email_placeholder": "admin@example.org",
         "admin_email_helper": "E-Mail eines bereits registrierten ARSnova-Benutzers, der Administratorrechte erhalten soll. Konto zuerst registrieren, dann hier eintragen.",
+        "resources_title": "Arbeitsspeicher",
+        "resources_hint": "ARSnova besteht aus 12 Containern, davon fünf Java-Dienste. Mindestens 2 GB freien Arbeitsspeicher allein für das Modul einplanen (im Ruhezustand rund 1,7 GB gemessen); Particify empfiehlt für den Produktivbetrieb 4 CPU-Kerne und 8 GB RAM. Mit weniger starten die Dienste langsam und können sich einige Male neu starten.",
         "allow_registration": "Selbstregistrierung erlauben",
         "allow_registration_off_hint": "Neue Registrierungen über die Anmeldeseite sind gesperrt (Standard einer neuen Installation). Bestehende Konten und Verzeichnisbenutzer können sich weiterhin anmelden. Einschalten, damit sich Personen ohne Verzeichniskonto selbst registrieren können.",
         "allow_registration_on_hint": "Jede Person, die ARSnova aufrufen kann, kann ein Konto anlegen. Ausschalten, wenn der Host aus dem Internet erreichbar ist und sich nur Verzeichnisbenutzer anmelden sollen.",

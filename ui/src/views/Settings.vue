@@ -9,6 +9,16 @@
         <h2>{{ $t("settings.title") }}</h2>
       </cv-column>
     </cv-row>
+    <cv-row>
+      <cv-column>
+        <NsInlineNotification
+          kind="info"
+          :title="$t('settings.resources_title')"
+          :description="$t('settings.resources_hint')"
+          :showCloseButton="false"
+        />
+      </cv-column>
+    </cv-row>
     <cv-row v-if="error.getConfiguration">
       <cv-column>
         <NsInlineNotification
