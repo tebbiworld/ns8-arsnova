@@ -19,13 +19,16 @@ Restart=always
 TimeoutStartSec=120
 TimeoutStopSec=70
 ExecStartPre=/bin/rm -f %t/arsnova-postgres-comment.pid %t/arsnova-postgres-comment.ctr-id
+# Never start on a cluster of an older major version or a half finished
+# upgrade (postgres:18 would create a new, empty cluster beside the old data).
+ExecStartPre=/usr/local/bin/runagent pg-volume-version --check arsnova-postgres-comment arsnovacomment
 ExecStart=/usr/bin/podman run \
     --conmon-pidfile %t/arsnova-postgres-comment.pid \
     --cidfile %t/arsnova-postgres-comment.ctr-id \
     --cgroups=no-conmon \
     --network arsnova \
     --replace -d --name postgresql_comment \
-    --volume arsnova-postgres-comment:/var/lib/postgresql/data:Z \
+    --volume arsnova-postgres-comment:/var/lib/postgresql:Z \
     --env POSTGRES_DB=arsnovacomment \
     --env POSTGRES_USER=${PG_COMMENT_USER} \
     --env-file %S/state/secrets/postgres-comment.env \

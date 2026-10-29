@@ -23,7 +23,7 @@ reponame="arsnova"
 # STOMP broker, the Angular web client and the front reverse proxy.
 #
 #   docker.io/particify/couchdb:3.5                  -> COUCHDB_IMAGE
-#   docker.io/library/postgres:13.8-alpine           -> POSTGRES_IMAGE
+#   docker.io/library/postgres:18.6-alpine           -> POSTGRES_IMAGE
 #   docker.io/particify/rabbitmq-stomp:4.3-alpine    -> RABBITMQ_STOMP_IMAGE
 #   docker.io/particify/arsnova-server-authz:3.13    -> ARSNOVA_SERVER_AUTHZ_IMAGE
 #   docker.io/particify/arsnova-server-core:3.13     -> ARSNOVA_SERVER_CORE_IMAGE
@@ -40,7 +40,9 @@ runtime_images=(
     # particify/couchdb:3.5 (CouchDB 3.5.2), the version of Particify's own
     # 3.13 compose file; CouchDB 3.x upgrades its data files in place
     "docker.io/particify/couchdb@sha256:12486b4e09af3d37598bacae7d945c7d911370b6a3f027516979af0e5fe31014"
-    "docker.io/library/postgres:13.8-alpine"
+    # PostgreSQL 18 (13 is out of support): cluster in /var/lib/postgresql/18/docker,
+    # converted from 13 by update-module.d/20upgrade_postgres
+    "docker.io/library/postgres:18.6-alpine"
     # particify/rabbitmq-stomp:4.3-alpine (RabbitMQ 4.3.1), as in Particify's
     # compose file for 3.13; update-module.d/10reset_rabbitmq empties the
     # broker volume when this image changes

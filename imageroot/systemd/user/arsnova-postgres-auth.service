@@ -19,13 +19,16 @@ Restart=always
 TimeoutStartSec=120
 TimeoutStopSec=70
 ExecStartPre=/bin/rm -f %t/arsnova-postgres-auth.pid %t/arsnova-postgres-auth.ctr-id
+# Never start on a cluster of an older major version or a half finished
+# upgrade (postgres:18 would create a new, empty cluster beside the old data).
+ExecStartPre=/usr/local/bin/runagent pg-volume-version --check arsnova-postgres-auth arsnovaauth
 ExecStart=/usr/bin/podman run \
     --conmon-pidfile %t/arsnova-postgres-auth.pid \
     --cidfile %t/arsnova-postgres-auth.ctr-id \
     --cgroups=no-conmon \
     --network arsnova \
     --replace -d --name postgresql_auth \
-    --volume arsnova-postgres-auth:/var/lib/postgresql/data:Z \
+    --volume arsnova-postgres-auth:/var/lib/postgresql:Z \
     --env POSTGRES_DB=arsnovaauth \
     --env POSTGRES_USER=${PG_AUTH_USER} \
     --env-file %S/state/secrets/postgres-auth.env \

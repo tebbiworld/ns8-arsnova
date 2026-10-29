@@ -1,0 +1,65 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# pg-volume-version VOLUME
+# pg-volume-version --check VOLUME DATABASE
+#
+# Print the PostgreSQL major version of the cluster in the volume:
+#   none           no volume, or no cluster in it yet
+#   <major>        cluster in <major>/docker (layout of the postgres:18+ images;
+#                  with several, the newest)
+#   <major> legacy cluster in the volume root (images up to 17, mounted on
+#                  /var/lib/postgresql/data; module 1.2.0 and earlier)
+#
+# --check: print nothing; fail when the volume holds a legacy cluster, a
+# cluster of another major version than ${POSTGRES_IMAGE}, or the major
+# upgrade of DATABASE is not finished (its dump in state/pgupgrade/ was not
+# loaded yet). The PostgreSQL units run it before the start: otherwise a new
+# image would create a second, empty cluster beside the old data, or start on
+# a half loaded one, and the services would run on incomplete databases.
+# update-module.d/20upgrade_postgres does the upgrade; until it worked, the
+# database stays down.
+
+set -e -o pipefail
+
+if [[ $1 == --check ]]; then
+    check=1 volume=$2 database=$3
+else
+    check= volume=$1
+fi
+
+version=none
+if podman volume exists "${volume}"; then
+    mountpoint=$(podman volume inspect --format '{{.Mountpoint}}' "${volume}")
+    # the files belong to the container's postgres user: read them in the
+    # user namespace of the module
+    version=$(podman unshare sh -c '
+        if [ -s "$1/PG_VERSION" ]; then
+            echo "$(cat "$1/PG_VERSION") legacy"
+        else
+            found=none
+            for f in "$1"/*/docker/PG_VERSION; do
+                [ -s "$f" ] || continue
+                v=$(cat "$f")
+                if [ "${found}" = none ] || [ "${v}" -gt "${found}" ]; then found=${v}; fi
+            done
+            echo "${found}"
+        fi' sh "${mountpoint}")
+fi
+
+if [[ -n ${check} ]]; then
+    # major version of the image, from its tag (postgres:18.6-alpine -> 18)
+    image_major=$(sed -nE 's/.*postgres:([0-9]+).*/\1/p' <<<"${POSTGRES_IMAGE}")
+    if [[ ${version} == *legacy || ( -n ${image_major} && ${version} != none && ${version} != "${image_major}" ) \
+          || -e "${AGENT_STATE_DIR:-.}/pgupgrade/${database}.pg_dump" ]]; then
+        echo "the PostgreSQL upgrade of ${database} (volume ${volume}: ${version}, image: ${image_major}) is not" \
+             "finished: repeat the module update (see README, \"Updates of the bundled services\")" >&2
+        exit 1
+    fi
+    exit 0
+fi
+echo "${version}"

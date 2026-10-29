@@ -6,8 +6,9 @@
 #
 
 # Rebuild both PostgreSQL data directories from the pg_dump files restored into
-# state/pgdump/: an ephemeral PostgreSQL container initialises a fresh cluster
-# with the restored password and loads the dump from its initdb hook.
+# state/pgdump/ (bin/pg-load-dump: a fresh cluster with the restored password).
+# Dumps of an older PostgreSQL major version (backups of 1.2.0 and earlier
+# were made with PostgreSQL 13) load into the current version the same way.
 
 set -e -o pipefail
 exec 1>&2
@@ -17,29 +18,13 @@ if [ ! -d pgdump ] || [ -z "$(ls -A pgdump 2>/dev/null)" ]; then
     exit 0
 fi
 
-restore_db() {
-    local volume=$1 db=$2 user=$3 secretfile=$4
-    [ -s "pgdump/${db}.pg_dump" ] || { echo "no dump for ${db}, skipped"; return 0; }
-    podman volume rm -f "${volume}" >/dev/null 2>&1 || true
-    rm -rf restore && mkdir -p restore
-    cat > restore/10-restore.sh <<EOS
-pg_restore -U ${user} --no-owner --no-privileges -d ${db} /pgdump/${db}.pg_dump
-EOS
-    cat > restore/zz-stop.sh <<'EOS'
-docker_temp_server_stop
-exit 0
-EOS
-    podman run --rm --network=none --replace --name arsnova-restore \
-        --volume ./restore:/docker-entrypoint-initdb.d:Z \
-        --volume ./pgdump:/pgdump:Z \
-        --volume "${volume}:/var/lib/postgresql/data:Z" \
-        --env POSTGRES_DB="${db}" \
-        --env POSTGRES_USER="${user}" \
-        --env-file "./secrets/${secretfile}" \
-        "${POSTGRES_IMAGE}"
-    echo "database ${db} restored from dump"
-}
-
-restore_db arsnova-postgres-auth arsnovaauth "${PG_AUTH_USER:-arsnovaauth}" postgres-auth.env
-restore_db arsnova-postgres-comment arsnovacomment "${PG_COMMENT_USER:-arsnovacomment}" postgres-comment.env
-rm -rf restore pgdump
+for spec in "arsnova-postgres-auth arsnovaauth ${PG_AUTH_USER:-arsnovaauth} postgres-auth.env" \
+            "arsnova-postgres-comment arsnovacomment ${PG_COMMENT_USER:-arsnovacomment} postgres-comment.env"; do
+    read -r volume db user secretfile <<<"${spec}"
+    if [ -s "pgdump/${db}.pg_dump" ]; then
+        pg-load-dump "${volume}" "${db}" "${user}" "${secretfile}" pgdump
+    else
+        echo "no dump for ${db}, skipped"
+    fi
+done
+rm -rf pgdump

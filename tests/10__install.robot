@@ -48,6 +48,16 @@ Data survives the update
         Should Be Equal    ${note.strip()}    kept
     END
 
+The databases run PostgreSQL 18
+    FOR    ${db}    IN    auth    comment
+        ${version} =    Run on node    runagent -m ${module_id} podman exec postgresql_${db} psql -U arsnova${db} -d arsnova${db} -tAc "SHOW server_version"
+        Should Start With    ${version.strip()}    18.
+        ${layout} =    Run on node    runagent -m ${module_id} pg-volume-version arsnova-postgres-${db}
+        Should Be Equal    ${layout.strip()}    18
+    END
+    # no dump of the major upgrade is left behind
+    Run on node    runagent -m ${module_id} test ! -e pgupgrade
+
 The broker runs RabbitMQ 4
     ${version} =    Run on node    runagent -m ${module_id} podman exec rabbitmq rabbitmqctl version
     Should Start With    ${version.strip()}    4.
