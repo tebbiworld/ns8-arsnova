@@ -10,7 +10,8 @@ import sys
 import json
 
 import agent
-import modsecrets
+import arsnovaldap
+import ldapsettings
 
 config = {}
 
@@ -26,14 +27,10 @@ config["allow_registration"] = os.getenv("REGISTERED_ALLOWED_DOMAINS", "*") == "
 config["smtp_host"] = os.getenv("SMTP_MANUAL_HOST", "")
 config["smtp_from"] = os.getenv("SMTP_MANUAL_FROM", "")
 
-# LDAP / Active Directory login settings (for the Settings page to edit).
-config["ldap_enabled"] = os.getenv("LDAP_ENABLED") == "True"
-config["ldap_url"] = os.getenv("LDAP_URL", "")
-config["ldap_base_dn"] = os.getenv("LDAP_BASE_DN", "")
-config["ldap_bind_dn"] = os.getenv("LDAP_BIND_DN", "")
-config["ldap_bind_password"] = modsecrets.get("LDAP_BIND_PASSWORD")
-config["ldap_group"] = os.getenv("LDAP_GROUP", "")
-config["ldap_user_attribute"] = os.getenv("LDAP_USER_ATTRIBUTE", "sAMAccountName")
+# Directory login: ldap_* settings and the user domains of the cluster, never
+# the bind password (only ldap_bind_password_set).
+config["ldap_enabled"] = arsnovaldap.enabled()
 config["ldap_title"] = os.getenv("LDAP_TITLE", "AD")
+config.update(ldapsettings.configuration())
 
 json.dump(config, fp=sys.stdout)
