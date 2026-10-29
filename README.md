@@ -193,9 +193,13 @@ LDAP, which only knows a user search filter; therefore:
   `memberUid` values, which a user filter cannot test;
 - a group given by name is resolved to its DN when the core starts; if the
   directory is unreachable then, the last known DN is used;
-- the core waits at most 5 s for a connection to the directory (fixed
-  value); a login against a server that does not answer is refused after
-  that time. ARSnova has no setting for a read timeout.
+- the core waits at most 5 s for a connection to the directory and at most
+  10 s for the answer to each LDAP request (fixed values: connect timeout in
+  `ldap.env`, read timeout in `etc/jndi.properties`, because ARSnova has no
+  setting for it). A login against a server that cannot be reached or does
+  not answer, also a user domain whose domain controller is down behind the
+  ldapproxy, is refused after that time instead of hanging until the
+  gateway gives up (504 after 60 s).
 
 With the certificate check **on**, the core trusts the public CAs of its Java
 runtime and checks the host name. With the check **off**, it trusts the

@@ -82,15 +82,21 @@
 
 - `list-ldap-groups` failed when no password was typed in (missing import).
 - **Directory login no longer hangs when the LDAP server does not answer.**
-  The core's LDAP provider gets a connect timeout of 5 s
-  (`SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_CONNECTTIMEOUT=5000`). The
-  `connect-timeout: 5000` of the core's `defaults.yml` does not apply to a
-  provider list set by environment variables (the list is replaced as a
-  whole), so the timeout was 0: a login against an unreachable server waited
-  for the system TCP timeout and ended with HTTP 504 after 60 s. It now fails
-  with 401 after about 5 s. Existing installations get the value when the
-  core restarts after the update (`bin/discover-ldap` writes `ldap.env` at
-  every start). ARSnova 3.13 offers no read timeout for LDAP.
+  - Connect timeout of 5 s for the core's LDAP provider
+    (`SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_CONNECTTIMEOUT=5000`). The
+    `connect-timeout: 5000` of the core's `defaults.yml` does not apply to a
+    provider list set by environment variables (the list is replaced as a
+    whole), so the timeout was 0: a login against an unreachable server
+    waited for the system TCP timeout and ended with HTTP 504 after 60 s.
+  - Read timeout of 10 s per LDAP request (`com.sun.jndi.ldap.read.timeout`
+    in `etc/jndi.properties`, mounted into the core's Java runtime; ARSnova
+    has no setting for it). It covers a server that accepts the connection
+    and then hangs, above all a user domain: the node's ldapproxy accepts at
+    once and waits up to 60 s for an unreachable domain controller.
+  - Such a login is now refused (401) after about 5 or 10 s. Existing
+    installations get both values when the core restarts after the update
+    (`bin/discover-ldap` writes `ldap.env` at every start, the unit mounts
+    the file).
 
 ## 1.2.0 — 2026-09-19
 
