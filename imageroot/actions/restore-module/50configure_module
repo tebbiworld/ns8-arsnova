@@ -6,13 +6,13 @@
 #
 
 # Re-apply the restored settings: every field configure-module accepts is
-# passed. The LDAP bind password is left blank on purpose: blank = keep the
-# restored value from passwords.env.
+# passed, the directory login through ldapsettings.restore_data().
 
 import os
 import sys
 
 import agent
+import ldapsettings
 
 env = os.environ
 
@@ -36,14 +36,11 @@ data = {
     "smtp_host": env.get("SMTP_MANUAL_HOST", ""),
     "smtp_from": env.get("SMTP_MANUAL_FROM", ""),
     "ldap_enabled": flag("LDAP_ENABLED", "False"),
-    "ldap_url": env.get("LDAP_URL", ""),
-    "ldap_base_dn": env.get("LDAP_BASE_DN", ""),
-    "ldap_bind_dn": env.get("LDAP_BIND_DN", ""),
-    "ldap_bind_password": "",
-    "ldap_group": env.get("LDAP_GROUP", ""),
-    "ldap_user_attribute": env.get("LDAP_USER_ATTRIBUTE", "sAMAccountName"),
     "ldap_title": env.get("LDAP_TITLE", "AD"),
 }
+# directory login settings (ldapsettings.py); the bind password stays blank =
+# keep the restored state/passwords.env
+data.update(ldapsettings.restore_data())
 if "TRAEFIK_LETS_ENCRYPT" not in env:
     # A backup taken with a module version that did not record the setting: say
     # so instead of silently asserting "off". The route is created without a
