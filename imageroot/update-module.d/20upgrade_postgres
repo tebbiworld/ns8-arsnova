@@ -10,7 +10,8 @@
 # A new major version cannot open the data files of an older one, and the
 # postgres:18 image keeps its cluster in /var/lib/postgresql/18/docker (volume
 # on /var/lib/postgresql) instead of the volume root. For each database with a
-# cluster of an older version in the volume root (bin/pg-volume-version):
+# cluster of an older major version (bin/pg-volume-version), in the volume root
+# (13, module 1.2.0 and earlier) or in <major>/docker (18 and later):
 #
 #   1. stop its unit and dump the database with the old PostgreSQL image
 #      (state/pgupgrade/<db>.pg_dump), check that pg_restore can read it
@@ -42,9 +43,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+image_major() {
+    sed -nE 's/.*postgres:([0-9]+).*/\1/p' <<<"$1"
+}
+
 old_image_for() {
     local major=$1
-    if [[ ${PREV_POSTGRES_IMAGE} == *postgres:${major}.* || ${PREV_POSTGRES_IMAGE} == *postgres:${major}-* ]]; then
+    if [[ $(image_major "${PREV_POSTGRES_IMAGE}") == "${major}" ]]; then
         echo "${PREV_POSTGRES_IMAGE}"
     elif [[ ${major} == 13 ]]; then
         echo "${LEGACY_IMAGE_13}"
@@ -53,14 +58,14 @@ old_image_for() {
     fi
 }
 
-dump_legacy() {
-    local unit=$1 volume=$2 db=$3 user=$4 secretfile=$5 major=$6
+dump_old() {
+    local unit=$1 volume=$2 db=$3 user=$4 secretfile=$5 major=$6 mountpath=$7
     local image container=${CONTAINER_PREFIX}${db}
     image=$(old_image_for "${major}") || { echo "no PostgreSQL ${major} image known for ${db}"; return 1; }
     echo "dumping ${db} with ${image}"
     systemctl --user stop "${unit}"
     podman run -d --replace --network=none --name "${container}" \
-        --volume "${volume}:/var/lib/postgresql/data:Z" \
+        --volume "${volume}:${mountpath}:Z" \
         --env POSTGRES_DB="${db}" --env POSTGRES_USER="${user}" \
         --env-file "./secrets/${secretfile}" \
         "${image}" >/dev/null
@@ -84,10 +89,14 @@ dump_legacy() {
 
 upgrade() {
     local unit=$1 volume=$2 db=$3 user=$4 secretfile=$5
-    local version
+    local version target
     version=$(pg-volume-version "${volume}")
+    target=$(image_major "${POSTGRES_IMAGE}")
     if [[ ${version} == *legacy ]]; then
-        dump_legacy "${unit}" "${volume}" "${db}" "${user}" "${secretfile}" "${version% legacy}"
+        # images up to 17 keep the cluster in the volume root
+        dump_old "${unit}" "${volume}" "${db}" "${user}" "${secretfile}" "${version% legacy}" /var/lib/postgresql/data
+    elif [[ ${version} != none && -n ${target} && ${version} -lt ${target} ]]; then
+        dump_old "${unit}" "${volume}" "${db}" "${user}" "${secretfile}" "${version}" /var/lib/postgresql
     fi
     if [[ -s "${DUMPDIR}/${db}.pg_dump" ]]; then
         systemctl --user stop "${unit}"

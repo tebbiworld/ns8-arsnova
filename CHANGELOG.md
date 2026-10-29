@@ -51,11 +51,15 @@
   `update-module.d/20upgrade_postgres` dumps each database with the old image,
   checks that the new `pg_restore` reads the dump, and loads it into a fresh
   PostgreSQL 18 cluster (`bin/pg-load-dump`, also used by `restore-module`).
-  The dump stays in `state/pgupgrade/` until it is loaded; a failed run is
-  repeated by running the update again. Until then the database units refuse
-  to start (`bin/pg-volume-version --check`) instead of creating an empty
-  cluster beside the old data. Make a backup before the update: there is no
-  way back to PostgreSQL 13 other than restoring it.
+  The dump stays in `state/pgupgrade/` until it is loaded (until then it is
+  the only copy of the database). The core only logs a failed update hook and
+  reports the update as done; the database units then refuse to start
+  (`bin/pg-volume-version --check`, also when the cluster has another major
+  version than the image) instead of running on an empty cluster. Repeat the
+  update of the same version with `update-module … "force": true` after
+  fixing the cause; see the README, "PostgreSQL 18 upgrade". Make a backup
+  before the update: there is no way back to PostgreSQL 13 other than
+  restoring it.
 
 ### Fixed
 

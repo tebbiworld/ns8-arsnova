@@ -69,6 +69,34 @@ administrator rights.
 > nodes the Java services start slowly and may restart a few times before the
 > stack settles.
 
+## PostgreSQL 18 upgrade (1.3.0)
+
+The update to 1.3.0 moves both databases from PostgreSQL 13 to 18 by dump and
+restore (`update-module.d/20upgrade_postgres`). Make a backup first: there is
+no way back to PostgreSQL 13 except restoring it.
+
+If the upgrade fails, the update task still reports success (the core only
+logs failed update hooks). Signs: the journal line
+`…/update-module.d/20upgrade_postgres has failed`, the ARSnova login page
+does not work, and
+
+```bash
+runagent -m arsnova1 systemctl --user --failed   # arsnova-postgres-*.service
+runagent -m arsnova1 ls pgupgrade                # pending dumps
+```
+
+The database units refuse to start while an upgrade is unfinished, so the
+services never run on an empty database. **Until the dump in
+`state/pgupgrade/` is loaded, it is the only copy of that database: do not
+delete it.** After fixing the cause, repeat the update of the same version:
+
+```bash
+api-cli run update-module --data '{"module_url":"ghcr.io/tebbiworld/arsnova:<version>","instances":["arsnova1"],"force":true}'
+```
+
+The same check stops a database whose cluster has another major version than
+the image (a future PostgreSQL update) until it is converted.
+
 ## Build
 
 ```bash

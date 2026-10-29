@@ -26,7 +26,10 @@ if [[ $# -ne 5 || ! -s "${dumpdir}/${db}.pg_dump" ]]; then
     exit 2
 fi
 
-podman volume rm -f "${volume}" >/dev/null 2>&1 || true
+if podman volume exists "${volume}"; then
+    # the initdb hook only runs on an empty volume: never load into old data
+    podman volume rm -f "${volume}" >/dev/null
+fi
 workdir=$(mktemp -d pg-load-dump.XXXXXX)
 trap 'rm -rf "${workdir}"' EXIT
 # the entrypoint runs the initdb hook as the postgres user of the image
