@@ -102,11 +102,52 @@ Hub (not redistributed by this module):
 
 This module's own code is GPL-3.0-or-later.
 
-## Directory server on the same node
+## Directory login (AD/LDAP)
 
-If the LDAP/AD server is the node itself (for example the NS8 Samba account
-provider on this node), the core container cannot connect to the node's own IP
-address — rootless containers see that address as their own. The module detects
-this at configuration time and points the core at `host.containers.internal`
-instead; nothing needs to be configured for it. The detection runs again on
-every module update.
+Optional, in the settings under "Directory login". Two sources, the same
+settings as the other tebbiworld modules (ns8-clamav, ns8-idevice-backup):
+
+- **User domain of this cluster** (recommended). Only the domain name is
+  stored; the module is bound to the domain as account consumer
+  (`cluster:accountconsumer`) and reads the connection through the node's
+  `ldapproxy` every time the core starts, so a new bind password or a moved
+  domain controller is picked up by a restart (event `user-domain-changed`).
+  An external AD/LDAP can be added to NS8 as a user domain too
+  (*Domains and users*); it then shows up here.
+- **LDAP server of its own** (advanced): URL, base DN, bind DN and password
+  (kept in `state/passwords.env`, never returned by `get-configuration`; an
+  empty field keeps the stored password), directory type, login attribute and
+  the certificate check.
+
+Optionally only members of one group may log in (Active Directory and Samba,
+nested groups count). ARSnova's backend checks the login with Spring Security
+LDAP, which only knows a user search filter; therefore:
+
+- no StartTLS: use `ldaps://` (or `ldap://` in a trusted network);
+- no group restriction for OpenLDAP (rfc2307) directories: their groups list
+  `memberUid` values, which a user filter cannot test;
+- a group given by name is resolved to its DN when the core starts; if the
+  directory is unreachable then, the last known DN is used.
+
+With the certificate check **on**, the core trusts the public CAs of its Java
+runtime and checks the host name. With the check **off**, it trusts the
+certificate the server presents when the core starts and skips the host name
+check (the behaviour before 1.3.0, kept for updated installations).
+
+### How the core reaches the directory
+
+The containers of a rootless Podman network can reach neither the node's
+loopback nor the node's own IP address.
+
+- For a **user domain**, the module user's pasta maps the node loopback to
+  `169.254.1.3` (`~/.config/containers/containers.conf`, written only while a
+  user domain is in use), and the core connects to the node's `ldapproxy`
+  there. Side effect: while that mapping exists, the ARSnova containers can
+  reach every service that listens on the node loopback. Switching to or away
+  from a user domain restarts the whole module once, because the option only
+  applies to a new rootless network.
+- For a **server of its own** on this node (for example the NS8 Samba DC),
+  the core gets an `--add-host <name>:host-gateway` entry: the host name and
+  with it the certificate check stay intact. An IP address of this node is
+  replaced by `host.containers.internal` (then turn the certificate check off).
+
