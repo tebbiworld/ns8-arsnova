@@ -31,6 +31,11 @@
   working) until the directory settings are changed and saved. Settings that
   1.2.0 did not apply (no URL or base DN) are switched off.
 - `list-ldap-groups` lists the groups of a user domain (input `domain`).
+- **CouchDB 3.2 → 3.5** (`particify/couchdb:3.5`, CouchDB 3.5.2, the version
+  of Particify's own 3.13 compose file). CouchDB 3.2 was built on Debian 11,
+  which no longer receives security updates. CouchDB upgrades the database
+  files in place when it starts; there is no way back to 3.2 other than
+  restoring a backup made before the update.
 
 ### Fixed
 

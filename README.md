@@ -20,7 +20,7 @@ Containers (all official `particify/*` images, plus PostgreSQL):
 - **arsnova-auth-service** — authentication/authorization (JWT)
 - **arsnova-comment-service** — Q&A / audience questions
 - **arsnova-formatting-service** — Markdown/LaTeX rendering
-- **couchdb** — primary datastore
+- **couchdb** — primary datastore (CouchDB 3.5)
 - **postgresql_auth**, **postgresql_comment** — service databases
 - **rabbitmq** — STOMP message broker (core ↔ websocket gateway)
 
