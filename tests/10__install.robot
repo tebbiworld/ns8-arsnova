@@ -40,6 +40,9 @@ Manual LDAP settings of the previous release are migrated
     Should Be True    ${cfg['ldap_bind_password_set']}
     ${old_keys} =    Run on node    grep -Ec '^LDAP_(HOST|PORT)=' /home/${module_id}/.config/state/environment || true
     Should Be Equal As Integers    ${old_keys.strip()}    0
+    # the user filter of 1.2.0 stays until the settings are changed
+    ${filter} =    Run on node    runagent -m ${module_id} grep '^SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_USERSEARCHFILTER=' ldap.env
+    Should Be Equal As Strings    ${filter.strip()}    SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_USERSEARCHFILTER=(&(sAMAccountName={0})(memberOf=CN=arsnova,DC=ci,DC=test))
 
 Configuration reads back
     ${cfg} =    Run task    module/${module_id}/get-configuration    {}

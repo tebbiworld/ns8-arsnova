@@ -132,7 +132,9 @@ LDAP, which only knows a user search filter; therefore:
 With the certificate check **on**, the core trusts the public CAs of its Java
 runtime and checks the host name. With the check **off**, it trusts the
 certificate the server presents when the core starts and skips the host name
-check (the behaviour before 1.3.0, kept for updated installations).
+check (the behaviour before 1.3.0, kept for updated installations). Updated
+installations also keep the user filter of 1.2.0 (`(&(<attribute>={0})(memberOf=<group DN>))`,
+direct membership only) until the directory settings are changed.
 
 ### How the core reaches the directory
 

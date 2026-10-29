@@ -26,8 +26,10 @@
   the same node keeps its host name (`--add-host … :host-gateway`) instead of
   being replaced by `host.containers.internal`.
 - Existing manual LDAP settings are migrated on update unchanged in behaviour:
-  source "LDAP server of its own", certificate check off, Active Directory
-  filter.
+  source "LDAP server of its own", certificate check off, and the user filter
+  of 1.2.0 (direct group membership, no object class, so OpenLDAP servers keep
+  working) until the directory settings are changed and saved. Settings that
+  1.2.0 did not apply (no URL or base DN) are switched off.
 - `list-ldap-groups` lists the groups of a user domain (input `domain`).
 
 ### Fixed
