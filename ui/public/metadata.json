@@ -17,7 +17,8 @@
     "documentation_url": "https://particify.de/manual/",
     "bug_url": "https://github.com/tebbiworld/ns8-arsnova/issues",
     "code_url": "https://github.com/tebbiworld/ns8-arsnova",
-    "relnotes_url": "https://github.com/tebbiworld/ns8-arsnova/releases"
+    "relnotes_url": "https://github.com/tebbiworld/ns8-arsnova/releases",
+    "terms_url": "https://github.com/tebbiworld/ns8-arsnova/blob/main/README.md#disclaimer--trademarks"
   },
   "source": "ghcr.io/tebbiworld/arsnova"
 }
