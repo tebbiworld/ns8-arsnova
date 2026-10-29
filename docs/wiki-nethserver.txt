@@ -100,7 +100,13 @@ The message broker holds no data that needs saving. A restore creates fresh Post
 Updates come from the Software Center. Release 1.3.0 also updates the bundled databases:
   * **CouchDB 3.2 → 3.5**: converted in place at the first start.
   * **RabbitMQ 3.11 → 4.3**: the broker starts with an empty data volume, because RabbitMQ 4 cannot read the data of 3.11 and ARSnova keeps nothing in it that must survive.
-  * **PostgreSQL 13 → 18**: each database is dumped with the old version and loaded into a new PostgreSQL 18 database. If this is interrupted, the database stays stopped (instead of starting empty) until the update is run again, which finishes the job.
+  * **PostgreSQL 13 → 18**: each database is dumped with the old version and loaded into a new PostgreSQL 18 database.
+
+If the PostgreSQL step fails, the update is still shown as done. You notice it because ARSnova does not work, the journal shows ''20upgrade_postgres has failed'', and ''runagent -m arsnova1 systemctl %%--%%user %%--%%failed'' lists the ''arsnova-postgres-*'' units. The database stays stopped instead of starting empty. **Do not delete** ''state/pgupgrade/'' in the module directory: until the update is finished, the dump there is the only copy of the database. After fixing the cause, repeat the update of the same version on the cluster leader:
+
+<code bash>
+api-cli run update-module --data '{"module_url":"ghcr.io/tebbiworld/arsnova:1.3.0","instances":["arsnova1"],"force":true}'
+</code>
 
 **Make a backup before updating to 1.3.0.** There is no way back to the old database versions except restoring that backup.
 

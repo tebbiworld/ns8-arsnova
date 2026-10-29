@@ -101,7 +101,7 @@ installation (`org.nethserver.volumes`).
 |---|---|---|---|
 | CouchDB | 3.2 | 3.5 | in place by CouchDB at the first start |
 | RabbitMQ | 3.11 | 4.3 | not at all: `update-module.d/10reset_rabbitmq` empties the broker volume when the image changes (RabbitMQ 4 cannot read 3.11 data; ARSnova keeps nothing in it) |
-| PostgreSQL | 13 | 18 | `update-module.d/20upgrade_postgres`: dump with the old image, load into a fresh PostgreSQL 18 cluster; an interrupted run is finished by running the update again, until then the database unit refuses to start (`bin/pg-volume-version --check`) |
+| PostgreSQL | 13 | 18 | `update-module.d/20upgrade_postgres`: dump with the old image, load into a fresh PostgreSQL 18 cluster; if it fails, the database unit refuses to start (`bin/pg-volume-version --check`) until the update is repeated, see the next section |
 
 Make a backup before the update: going back to the old versions needs it.
 

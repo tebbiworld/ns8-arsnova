@@ -4,8 +4,9 @@ Resource    api.resource
 
 *** Test Cases ***
 Free the memory of the restored instance
-    # the original instance is stopped since the restore test; two full
-    # ARSnova stacks do not fit into the CI guest
+    # two ARSnova stacks at a time are the most the CI guest holds: the
+    # clone starts next to the original, which the core starts again after
+    # copying its volumes (clone-module with replace false)
     Run on node    runagent -m ${restored_id} systemctl --user stop arsnova.service
 
 Clone the module
