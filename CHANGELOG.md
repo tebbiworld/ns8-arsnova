@@ -13,6 +13,16 @@
   declares `cluster:accountconsumer`. The group is picked from a list for a
   user domain; nested Active Directory groups count, disabled accounts cannot
   log in.
+- Memory hint on the Settings page and in the README (12 containers, at least
+  2 GB of free RAM for the module).
+- `org.nethserver.volumes=arsnova-couchdb`: the CouchDB volume can be placed
+  on an additional disk at installation.
+- `terms_url` in the metadata points to the disclaimer and trademark notes.
+- Administrator guide (`docs/wiki-nethserver.txt`): installation, login
+  options, self-registration, memory, backup, updates, limits. The old text
+  wrongly said the backup held no data.
+- Test `tests/40__clone.robot`: the clone keeps route, settings, secrets and
+  data.
 
 ### Changed
 

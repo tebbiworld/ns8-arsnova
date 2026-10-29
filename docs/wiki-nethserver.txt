@@ -11,101 +11,126 @@ The presenter creates a room; participants join it with a browser, without an ac
 
   * **Polls and evaluations** — several question formats: multiple choice, Likert scale, open question, sorting. Free-text answers can be shown as a word cloud.
   * **Quizzes** — the same formats scored as a competition, to check what the audience already knows.
-  * **Comments and Q&A** — the audience posts questions and votes them up, so the important ones surface. Comments can be moderated before publication, and further users can be made moderators.
+  * **Comments and Q&A** — the audience posts questions and votes them up, so the important ones surface. Comments can be moderated before publication, and further users can be made moderators. Q&A is off in a new room; the presenter switches it on in the room settings.
   * **Live feedback** — a quick reading of whether the audience can still follow, at any point during the talk.
   * **Live updates** — results and comments update in real time on all screens.
   * **Collections** — quizzes and evaluations can be organised into sets.
 
 Suitable for lectures, classes, training sessions and conference talks, on site, online or mixed.
 
-=====Architecture=====
-ARSnova is a microservice stack. Several services listen on port 8080 and find each other by DNS name, so the module does not use a single pod. It creates a dedicated rootless Podman network named ''arsnova'' with built-in DNS and runs each service as its own container on that network. Only the front proxy is published to the host.
-
-^ Container ^ Purpose ^
-| ''arsnova-proxy'' | nginx front proxy, the only published entry point |
-| ''arsnova-web'' | Angular web client |
-| ''arsnova-http-gateway'' | %%API%% gateway, distributes ''/api'' to the services |
-| ''arsnova-ws-gateway'' | WebSocket/STOMP gateway for live updates |
-| ''arsnova-backend-core'' | rooms, contents, answers, live socket |
-| ''arsnova-auth-service'' | authentication and authorisation (JWT) |
-| ''arsnova-comment-service'' | Q&A and audience questions |
-| ''arsnova-formatting-service'' | Markdown and LaTeX rendering |
-| ''couchdb'' | primary datastore |
-| ''postgresql_auth'', ''postgresql_comment'' | service databases |
-| ''rabbitmq'' | STOMP broker between core and WebSocket gateway |
-
-All application images are official ''particify/*'' images, pinned to version 3.13, plus CouchDB, PostgreSQL and RabbitMQ. They are pulled at runtime and are not redistributed by the module.
-
-====Routing====
-Traefik publishes everything on one host name and forwards the WebSocket upgrade transparently. The front proxy dispatches internally:
-
-  * ''/'' to the web client
-  * ''/api/'' to the HTTP gateway
-  * ''/api/ws/'' to the WebSocket gateway, which carries the live features
-
-=====Resource requirements=====
-ARSnova needs noticeably more resources than a single-service module. Particify recommends 4 CPU cores and 8 GB RAM. On a smaller node the Java services start slowly and may restart a few times before the stack settles. Plan the node accordingly before installing.
+=====Before you install: memory=====
+ARSnova is a microservice stack of 12 containers, five of them Java services. Plan at least **2 GB of free RAM** for the module alone (about 1.7 GB measured at rest on a small test node). Particify recommends 4 CPU cores and 8 GB RAM for production use. With less, the Java services start slowly and may restart a few times before the stack settles; the first start after installation or an update takes a few minutes.
 
 =====Installation=====
-On the NethServer 8 cluster leader:
+  - Install **ARSnova** from the Software Center.
+  - Open the new instance and go to **Settings**.
+  - Enter the host name under which ARSnova shall be reachable (it must point to this node), and switch the Let's Encrypt certificate and the HTTPS redirection on if the name is public.
+  - Choose how people log in (next sections) and save.
+  - Open the address shown on the settings page.
+
+From the command line, on the cluster leader:
 
 <code bash>
-add-module ghcr.io/tebbiworld/arsnova:1.1.0 1
-</code>
-
-Configure it, replacing the host name:
-
-<code bash>
+add-module ghcr.io/tebbiworld/arsnova:latest 1
 api-cli run module/arsnova1/configure-module --data '{
   "host": "arsnova.example.org",
   "lets_encrypt": true,
-  "http2https": true,
-  "admin_email": "you@example.org"
+  "http2https": true
 }'
 </code>
 
-Then open the published address, register an account and confirm it. ARSnova sends the verification code by e-mail. Set //Administrator account// to the address of an already registered user to give that account administrator rights.
+=====How people log in=====
+Participants join a room without an account. Presenters need an account. There are three ways, and they can be combined:
+
+  * **Guest** — anybody can start as a guest and create rooms. The rooms are bound to that browser.
+  * **Directory account** — users of a user domain of the cluster or of an LDAP server of your own (next section). Recommended when the host is reachable from the internet.
+  * **Self-registration** — anybody can create an account with an e-mail address and a password.
+
+====Self-registration====
+**Off on a new installation** (since 1.3.0): nobody can create an account from the login page. Switch //Allow self-registration// on in the Settings page if people without a directory account shall register themselves. The page warns while it is on: anyone who can open ARSnova can then create accounts. Existing accounts and directory logins work in both cases. Instances installed before 1.3.0 keep the setting they had.
+
+A new account must be confirmed with a code that ARSnova sends by e-mail (see //Outgoing mail//).
+
+====Directory login====
+Optional, in the Settings page under //Directory login//.
+
+^ Source ^ What is stored in the module ^ When to use ^
+| **User domain of this cluster** (recommended) | only the name of the domain | the users are in a user domain of NethServer (internal Samba or OpenLDAP, or an external AD/LDAP added under //Domains and users//) |
+| **LDAP server of your own** | URL, base DN, bind DN, bind password (in a protected file, never shown again), login attribute, certificate check | the server is meant for this module only, is not reachable by the cluster permanently, or needs settings a user domain does not offer |
+
+Optionally only the members of **one group** may log in. For a user domain the group is chosen from a list; on Active Directory and Samba nested groups count. A group restriction needs Active Directory or Samba; for OpenLDAP directories it is refused.
+
+Things to know:
+  * Use %%ldaps://%% for a server of your own. ARSnova does not support StartTLS.
+  * With the certificate check **on**, the server certificate must be signed by a public CA and match the host name. With the check **off**, the module trusts the certificate the server presents at start, without the host name check. NethServer's Samba presents a self-signed certificate: turn the check off for it, or better use it as a user domain.
+  * With a user domain, the module reaches the node's ldapproxy through a mapping of the node loopback into its container network. While that mapping exists, the ARSnova containers can also reach other services that listen on the node loopback. Switching to or away from a user domain restarts the whole module once.
+
+====Administrator account====
+//Administrator account// takes the e-mail address of an account created by self-registration; that account gets administrator rights in ARSnova. Directory accounts cannot be made administrators this way. The administration area of the ARSnova web client (user management, statistics) needs a newer server generation that Particify does not publish; it is not available.
+
+====Outgoing mail====
+ARSnova sends the confirmation codes for new accounts and the password reset links by e-mail. If the cluster has a smarthost, the module uses it. Otherwise a relay host and sender address can be entered.
+
+Limitation: the ARSnova core supports a plain %%SMTP%% relay only — port 25, no authentication, no TLS. Without a usable relay the confirmation code appears in the log of the core service:
+
+<code bash>
+runagent -m arsnova1 journalctl --user -u arsnova-core.service | grep -i "verification\|code"
+</code>
 
 =====Settings=====
 
 ^ Setting ^ Description ^
 | Host name | %%FQDN%% under which ARSnova is published. |
-| Let's Encrypt certificate | Requests a certificate for the host name. Requires that ports 80 and 443 of this name reach this node. |
+| Let's Encrypt certificate | Requests a certificate for the host name. Ports 80 and 443 of this name must reach this node. |
 | HTTP to HTTPS redirection | Redirects HTTP to HTTPS. |
-| Administrator account | E-mail address of a **registered** ARSnova user that is granted administrator rights. Applies to accounts created with e-mail and password, not to directory logins. Empty means everyone stays a regular user. |
-| Allow self-registration | Whether anyone can create an account from the login page. When off, existing accounts and directory logins keep working. |
+| Administrator account | E-mail address of a self-registered account that gets administrator rights. Empty: everyone stays a regular user. |
+| Allow self-registration | Whether anyone can create an account from the login page. Off on a new installation. |
+| SMTP relay host, sender address | Only used when the cluster has no smarthost. |
+| Directory login | User domain or LDAP server of your own, optional group, provider label on the login page. |
 
-====Outgoing mail====
-ARSnova sends the verification code for new accounts and the password reset links by e-mail. If the cluster has a smarthost configured, the module uses it. Otherwise a relay host can be entered manually, together with the sender address.
+=====Backup, restore and clone=====
+The NS8 backup of the module contains:
+  * the settings and the secrets of the module (database passwords, signing key, bind password of an LDAP server of your own),
+  * the CouchDB data volume (rooms, questions, answers),
+  * a dump of both PostgreSQL databases (room memberships, comments), written right before each backup.
 
-Note the limitation: the ARSnova core supports a plain %%SMTP%% relay only — port 25, no authentication, no TLS. A relay that requires authentication cannot be used.
+The message broker holds no data that needs saving. A restore creates fresh PostgreSQL databases from the dumps. //Clone// and //Move// copy the volumes as they are. The CouchDB volume can be placed on an additional disk at installation.
 
-If no usable relay is available, the verification code appears in the log of the core service:
+=====Updates=====
+Updates come from the Software Center. Release 1.3.0 also updates the bundled databases:
+  * **CouchDB 3.2 → 3.5**: converted in place at the first start.
+  * **RabbitMQ 3.11 → 4.3**: the broker starts with an empty data volume, because RabbitMQ 4 cannot read the data of 3.11 and ARSnova keeps nothing in it that must survive.
+  * **PostgreSQL 13 → 18**: each database is dumped with the old version and loaded into a new PostgreSQL 18 database. If this is interrupted, the database stays stopped (instead of starting empty) until the update is run again, which finishes the job.
 
-<code bash>
-journalctl --user -u arsnova-core.service | grep -i "verification\|code"
-</code>
+**Make a backup before updating to 1.3.0.** There is no way back to the old database versions except restoring that backup.
 
-====Active Directory and LDAP====
-Optional. When enabled, the login page offers an additional provider whose label you can choose.
+=====Limits=====
+  * Single node, one host name per instance. Several instances on one node are possible, if the memory suffices.
+  * No StartTLS for directory login; no group restriction for OpenLDAP directories.
+  * Mail only through a plain relay on port 25 without authentication.
+  * No administration area for user management (see //Administrator account//).
+  * The ARSnova images come from Particify (version 3.13); their Java dependencies carry known vulnerabilities that only Particify can fix. Only the front proxy is reachable from outside, through Traefik.
 
-^ Setting ^ Description ^
-| LDAP address | LDAPS address of the directory server, for example %%ldaps://ad.example.org:636%%. |
-| Base DN | Search base, for example ''DC=ad,DC=example,DC=org''. |
-| Bind DN and bind password | Read-only service account for the directory search. |
-| Access group DN | Full DN of the group whose members may log in. Empty means every directory user may log in. |
-| Login attribute | Attribute matched against the entered user name. Default ''sAMAccountName''. |
-| Provider label | Label of this provider on the login page. Default ''AD''. |
+=====Architecture=====
+Several services listen on port 8080 and find each other by DNS name, so the module does not use a single pod. It creates a rootless Podman network named ''arsnova'' and runs each service as its own container on it. Only the front proxy is published to Traefik, which forwards the WebSocket upgrade transparently.
 
-The module builds a Java truststore for the core service: a copy of the default CA bundle with the certificate of your directory server added. LDAPS therefore works both with a publicly trusted certificate and with the self-signed certificate that an on-premises Active Directory or Samba usually presents.
+^ Container ^ Purpose ^
+| ''arsnova-proxy'' | nginx front proxy, the only published entry point: ''/'' web client, ''/api/'' HTTP gateway, ''/api/ws/'' WebSocket gateway |
+| ''arsnova-web'' | Angular web client |
+| ''arsnova-http-gateway'' | %%API%% gateway, distributes ''/api'' to the services |
+| ''arsnova-ws-gateway'' | WebSocket/STOMP gateway for live updates |
+| ''arsnova-backend-core'' | rooms, contents, answers, directory login |
+| ''arsnova-auth-service'' | room memberships and authorisation (JWT) |
+| ''arsnova-comment-service'' | Q&A and audience questions |
+| ''arsnova-formatting-service'' | Markdown and LaTeX rendering |
+| ''couchdb'' | primary datastore (CouchDB 3.5) |
+| ''postgresql_auth'', ''postgresql_comment'' | service databases (PostgreSQL 18) |
+| ''rabbitmq'' | message broker between the services and the WebSocket gateway (RabbitMQ 4.3) |
 
-=====Backup=====
-The module does not list its volumes for the NS8 backup; there is no ''state-include.conf''. An NS8 backup of this module contains the module environment only, **not** the CouchDB datastore with rooms, contents and answers, and not the two service databases. Back these up separately until this is added to the module.
+All images are pinned and pulled at runtime; they are not redistributed by the module.
 
 =====Licences and trademarks=====
 Unofficial, community-built package, not affiliated with or endorsed by Particify or the ARSnova team. "ARSnova" and "Particify" are trademarks of their respective owners and are used here only to identify the packaged software.
-
-The module pulls the upstream components at runtime and does not redistribute them:
 
   * ARSnova server services (core, authz, comments, websocket, gateway, formatting) — GPL-3.0-or-later
   * ARSnova web client — MIT (© ARSnova Team and Contributors); the module logo is the app icon from that project
@@ -118,7 +143,7 @@ The module's own code is licensed %%GPL%%-3.0-or-later.
   * [[https://particify.de/manual/|End-user documentation]] (German)
   * [[https://www.particify.de/de/features/|Feature overview at Particify]]
   * [[https://github.com/particify/arsnova|ARSnova on Github]]
-  * [[https://gitlab.com/particify/dev/foss/docker-orchestration|Upstream installation guide]]
+  * [[https://github.com/tebbiworld/ns8-arsnova|Module source and README]]
   * [[https://github.com/tebbiworld/ns8-arsnova/issues|Bug reports]]
 
 =====Disclaimer=====
