@@ -72,9 +72,38 @@ journalctl --user -u arsnova-core.service | grep -i "verification\|code"
 Set `admin_email` to the address of an already-registered user to grant it
 administrator rights.
 
-> ARSnova is resource hungry (Particify recommends 4 CPU / 8 GB RAM). On smaller
-> nodes the Java services start slowly and may restart a few times before the
-> stack settles.
+> **Memory:** ARSnova runs 12 containers, five of them Java services. Plan at
+> least 2 GB of free RAM for the module alone (about 1.7 GB measured at rest on
+> the development node); Particify recommends 4 CPU cores and 8 GB RAM for
+> production use. On smaller nodes the Java services start slowly and may
+> restart a few times before the stack settles. The Settings page shows the
+> same hint.
+
+A step-by-step guide for administrators (installation, login options,
+self-registration, memory, backup, updates, limits) is in
+[`docs/wiki-nethserver.txt`](docs/wiki-nethserver.txt), the text of the
+module's page in the NethServer community wiki.
+
+## Backup, restore and clone
+
+The NS8 backup (`etc/state-include.conf`) holds `state/passwords.env` (all
+secrets), the CouchDB volume `arsnova-couchdb` (rooms, contents, answers) and
+`state/pgdump/`, a `pg_dump` of both PostgreSQL databases written by
+`bin/module-dump-state` before each backup. `restore-module` loads the dumps
+into fresh databases (`bin/pg-load-dump`). The RabbitMQ volume is not saved:
+the broker holds nothing that must survive. Clone and move copy all volumes
+as they are. `arsnova-couchdb` is offered for an additional disk at
+installation (`org.nethserver.volumes`).
+
+## Updates of the bundled services (1.3.0)
+
+| Service | Before | After | How existing data is carried over |
+|---|---|---|---|
+| CouchDB | 3.2 | 3.5 | in place by CouchDB at the first start |
+| RabbitMQ | 3.11 | 4.3 | not at all: `update-module.d/10reset_rabbitmq` empties the broker volume when the image changes (RabbitMQ 4 cannot read 3.11 data; ARSnova keeps nothing in it) |
+| PostgreSQL | 13 | 18 | `update-module.d/20upgrade_postgres`: dump with the old image, load into a fresh PostgreSQL 18 cluster; if it fails, the database unit refuses to start (`bin/pg-volume-version --check`) until the update is repeated, see the next section |
+
+Make a backup before the update: going back to the old versions needs it.
 
 ## PostgreSQL 18 upgrade (1.3.0)
 

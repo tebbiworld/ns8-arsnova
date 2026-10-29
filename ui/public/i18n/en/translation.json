@@ -36,6 +36,8 @@
         "admin_email": "Administrator account (optional)",
         "admin_email_placeholder": "admin@example.org",
         "admin_email_helper": "E-mail of an already registered ARSnova user to grant administrator rights. Register the account first, then enter it here.",
+        "resources_title": "Memory",
+        "resources_hint": "ARSnova runs 12 containers, five of them Java services. Plan at least 2 GB of free RAM for the module alone (about 1.7 GB measured at rest); Particify recommends 4 CPU cores and 8 GB RAM for production use. With less, the services start slowly and may restart a few times.",
         "allow_registration": "Allow self-registration",
         "allow_registration_off_hint": "New sign-ups from the login page are blocked (default of a new installation). Existing accounts and directory users can still log in. Switch it on to let people without a directory account register themselves.",
         "allow_registration_on_hint": "Anyone who can open ARSnova can create an account. Switch it off if the host is reachable from the internet and only directory users should log in.",
