@@ -48,6 +48,10 @@ Data survives the update
         Should Be Equal    ${note.strip()}    kept
     END
 
+The broker runs RabbitMQ 4
+    ${version} =    Run on node    runagent -m ${module_id} podman exec rabbitmq rabbitmqctl version
+    Should Start With    ${version.strip()}    4.
+
 Manual LDAP settings of the previous release are migrated
     Skip If    '${SCENARIO}' != 'update'    scenario is ${SCENARIO}
     ${cfg} =    Run task    module/${module_id}/get-configuration    {}
