@@ -39,8 +39,12 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
             <cv-toggle
               value="http2https"
@@ -49,8 +53,12 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
             <NsInlineNotification
               kind="info"
@@ -74,8 +82,12 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
             <NsInlineNotification
               v-if="!allow_registration"
@@ -118,8 +130,12 @@
               :disabled="loading.getConfiguration || loading.configureModule"
               class="toggle"
             >
-              <template slot="text-left">{{ $t("settings.disabled") }}</template>
-              <template slot="text-right">{{ $t("settings.enabled") }}</template>
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
             </cv-toggle>
             <div v-if="ldap_enabled">
               <cv-text-input
@@ -162,7 +178,9 @@
                   kind="tertiary"
                   size="small"
                   :loading="loading.listLdapGroups"
-                  :disabled="loading.listLdapGroups || !ldap_url || !ldap_bind_dn"
+                  :disabled="
+                    loading.listLdapGroups || !ldap_url || !ldap_bind_dn
+                  "
                   @click.prevent="loadLdapGroups"
                   >{{ $t("settings.ldap_load_groups") }}</NsButton
                 >
