@@ -22,7 +22,7 @@ reponame="arsnova"
 # of Spring-Boot services plus CouchDB, two PostgreSQL databases, a RabbitMQ
 # STOMP broker, the Angular web client and the front reverse proxy.
 #
-#   docker.io/particify/couchdb:3.2                  -> COUCHDB_IMAGE
+#   docker.io/particify/couchdb:3.5                  -> COUCHDB_IMAGE
 #   docker.io/library/postgres:13.8-alpine           -> POSTGRES_IMAGE
 #   docker.io/particify/rabbitmq-stomp:3.11-alpine   -> RABBITMQ_STOMP_IMAGE
 #   docker.io/particify/arsnova-server-authz:3.13    -> ARSNOVA_SERVER_AUTHZ_IMAGE
@@ -34,10 +34,12 @@ reponame="arsnova"
 #   docker.io/particify/arsnova-webclient:3.13       -> ARSNOVA_WEBCLIENT_IMAGE
 #   docker.io/particify/arsnova-proxy:3.13           -> ARSNOVA_PROXY_IMAGE
 # Fully pinned references: dated 3.13 builds where Particify publishes them,
-# digests for the images that only have rolling tags (proxy 3.13, couchdb 3.2,
+# digests for the images that only have rolling tags (proxy 3.13, couchdb 3.5,
 # rabbitmq-stomp 3.11-alpine).
 runtime_images=(
-    "docker.io/particify/couchdb@sha256:b3e9f32247241904a67cdcd9f45da07de8416cd038412a1a5ae1cbe01f66fb70"
+    # particify/couchdb:3.5 (CouchDB 3.5.2), the version of Particify's own
+    # 3.13 compose file; CouchDB 3.x upgrades its data files in place
+    "docker.io/particify/couchdb@sha256:12486b4e09af3d37598bacae7d945c7d911370b6a3f027516979af0e5fe31014"
     "docker.io/library/postgres:13.8-alpine"
     "docker.io/particify/rabbitmq-stomp@sha256:411565bb5c984c65d3325ae8d12594004b4c304b93478d3710f444841ad99239"
     "docker.io/particify/arsnova-server-authz:3.13.20260613"
