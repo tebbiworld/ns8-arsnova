@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Groups of a cluster user domain for the group selection of the settings
+# page (read through the node's ldapproxy; nothing is stored).
+
+import json
+import sys
+
+import agent
+import ldapsettings
+
+data = json.load(sys.stdin)
+try:
+    groups = ldapsettings.list_groups(data["domain"])
+except Exception as exc:
+    print(agent.SD_WARNING + f"cannot list the groups of {data['domain']}: {exc}", file=sys.stderr)
+    groups = []
+json.dump({"groups": groups}, fp=sys.stdout)
