@@ -44,6 +44,18 @@
   `update-module.d/10reset_rabbitmq` therefore starts the broker on an empty
   volume whenever its image changes. Events in flight during the update are
   lost (the services are restarted at the same time anyway).
+- **PostgreSQL 13 → 18** for both service databases (`postgres:18.6-alpine`;
+  PostgreSQL 13 is out of support). A new major version cannot open the old
+  data files, and the postgres 18 image keeps its cluster in
+  `/var/lib/postgresql/18/docker` (volume now mounted on `/var/lib/postgresql`).
+  `update-module.d/20upgrade_postgres` dumps each database with the old image,
+  checks that the new `pg_restore` reads the dump, and loads it into a fresh
+  PostgreSQL 18 cluster (`bin/pg-load-dump`, also used by `restore-module`).
+  The dump stays in `state/pgupgrade/` until it is loaded; a failed run is
+  repeated by running the update again. Until then the database units refuse
+  to start (`bin/pg-volume-version --check`) instead of creating an empty
+  cluster beside the old data. Make a backup before the update: there is no
+  way back to PostgreSQL 13 other than restoring it.
 
 ### Fixed
 

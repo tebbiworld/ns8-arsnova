@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# pg-load-dump VOLUME DATABASE USER SECRETFILE DUMPDIR
+#
+# Replace the PostgreSQL volume VOLUME by a fresh cluster of ${POSTGRES_IMAGE}
+# and load DUMPDIR/DATABASE.pg_dump (pg_dump custom format) into it. An
+# ephemeral container initialises the cluster with the user and password of
+# the service (state/secrets/SECRETFILE) and runs pg_restore from its initdb
+# hook; any error of pg_restore aborts the initialisation (the entrypoint runs
+# the hook with "set -e"), so a non-zero exit means the data is not complete.
+#
+# Used by restore-module/40restore_postgres and the PostgreSQL major upgrade
+# (update-module.d/20upgrade_postgres). Runs in the state directory.
+
+set -e -o pipefail
+exec 1>&2
+
+volume=$1 db=$2 user=$3 secretfile=$4 dumpdir=$5
+if [[ $# -ne 5 || ! -s "${dumpdir}/${db}.pg_dump" ]]; then
+    echo "usage: pg-load-dump VOLUME DATABASE USER SECRETFILE DUMPDIR (with DUMPDIR/DATABASE.pg_dump)"
+    exit 2
+fi
+
+podman volume rm -f "${volume}" >/dev/null 2>&1 || true
+workdir=$(mktemp -d pg-load-dump.XXXXXX)
+trap 'rm -rf "${workdir}"' EXIT
+# the entrypoint runs the initdb hook as the postgres user of the image
+chmod 0755 "${workdir}"
+cat > "${workdir}/10-restore.sh" <<EOS
+pg_restore -U ${user} --no-owner --no-privileges -d ${db} /pgdump/${db}.pg_dump
+EOS
+cat > "${workdir}/zz-stop.sh" <<'EOS'
+docker_temp_server_stop
+exit 0
+EOS
+chmod 0644 "${workdir}"/*.sh
+# Since PostgreSQL 18 the image keeps its cluster in /var/lib/postgresql/<major>/docker
+# and expects the volume on /var/lib/postgresql.
+podman run --rm --network=none --replace --name "arsnova-pg-load-${db}" \
+    --volume "./${workdir}:/docker-entrypoint-initdb.d:Z" \
+    --volume "./${dumpdir}:/pgdump:Z" \
+    --volume "${volume}:/var/lib/postgresql:Z" \
+    --env POSTGRES_DB="${db}" \
+    --env POSTGRES_USER="${user}" \
+    --env-file "./secrets/${secretfile}" \
+    "${POSTGRES_IMAGE}"
+echo "database ${db} loaded from ${dumpdir}/${db}.pg_dump"

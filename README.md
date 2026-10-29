@@ -21,7 +21,7 @@ Containers (all official `particify/*` images, plus PostgreSQL):
 - **arsnova-comment-service** — Q&A / audience questions
 - **arsnova-formatting-service** — Markdown/LaTeX rendering
 - **couchdb** — primary datastore (CouchDB 3.5)
-- **postgresql_auth**, **postgresql_comment** — service databases
+- **postgresql_auth**, **postgresql_comment** — service databases (PostgreSQL 18)
 - **rabbitmq** — STOMP message broker (core ↔ websocket gateway; RabbitMQ 4.3,
   no data that must survive: emptied when its image changes on update)
 

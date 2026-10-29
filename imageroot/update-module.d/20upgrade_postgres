@@ -1,0 +1,107 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Move both PostgreSQL databases to the major version of ${POSTGRES_IMAGE}.
+#
+# A new major version cannot open the data files of an older one, and the
+# postgres:18 image keeps its cluster in /var/lib/postgresql/18/docker (volume
+# on /var/lib/postgresql) instead of the volume root. For each database with a
+# cluster of an older version in the volume root (bin/pg-volume-version):
+#
+#   1. stop its unit and dump the database with the old PostgreSQL image
+#      (state/pgupgrade/<db>.pg_dump), check that pg_restore can read it
+#   2. replace the volume by a fresh cluster of the new version and load the
+#      dump into it (bin/pg-load-dump), then delete the dump
+#
+# The dump is deleted only after it was loaded: a run that stopped half way
+# loads it again on the next update. The units refuse to start while a volume
+# still holds a cluster in the old layout (pg-volume-version --check), so the
+# services never run on a second, empty cluster. 90restart_services starts the
+# databases again.
+
+set -e -o pipefail
+exec 1>&2
+cd "${AGENT_STATE_DIR}"
+
+DUMPDIR=pgupgrade
+# image of every module release before the upgrade to PostgreSQL 18; used when
+# the previous image is unknown (update repeated after a failed attempt)
+LEGACY_IMAGE_13=docker.io/library/postgres:13.8-alpine
+READY_TRIES=60
+CONTAINER_PREFIX=arsnova-pg-upgrade-
+
+cleanup() {
+    local c
+    for c in $(podman ps -a --format '{{.Names}}' | grep "^${CONTAINER_PREFIX}" || true); do
+        podman rm -f -t 30 "${c}" >/dev/null 2>&1 || true
+    done
+}
+trap cleanup EXIT
+
+old_image_for() {
+    local major=$1
+    if [[ ${PREV_POSTGRES_IMAGE} == *postgres:${major}.* || ${PREV_POSTGRES_IMAGE} == *postgres:${major}-* ]]; then
+        echo "${PREV_POSTGRES_IMAGE}"
+    elif [[ ${major} == 13 ]]; then
+        echo "${LEGACY_IMAGE_13}"
+    else
+        return 1
+    fi
+}
+
+dump_legacy() {
+    local unit=$1 volume=$2 db=$3 user=$4 secretfile=$5 major=$6
+    local image container=${CONTAINER_PREFIX}${db}
+    image=$(old_image_for "${major}") || { echo "no PostgreSQL ${major} image known for ${db}"; return 1; }
+    echo "dumping ${db} with ${image}"
+    systemctl --user stop "${unit}"
+    podman run -d --replace --network=none --name "${container}" \
+        --volume "${volume}:/var/lib/postgresql/data:Z" \
+        --env POSTGRES_DB="${db}" --env POSTGRES_USER="${user}" \
+        --env-file "./secrets/${secretfile}" \
+        "${image}" >/dev/null
+    local i
+    for ((i = 0; ; i++)); do
+        podman exec "${container}" pg_isready -q -U "${user}" -d "${db}" && break
+        if ((i >= READY_TRIES)); then
+            echo "PostgreSQL ${major} did not start on volume ${volume}"
+            return 1
+        fi
+        sleep 2
+    done
+    mkdir -p "${DUMPDIR}"
+    podman exec "${container}" pg_dump -U "${user}" --format=c "${db}" > "${DUMPDIR}/${db}.pg_dump.tmp"
+    # the new pg_restore must be able to read the dump before the old data goes
+    podman run --rm --network=none --volume "./${DUMPDIR}:/pgdump:Z" --entrypoint pg_restore \
+        "${POSTGRES_IMAGE}" --list "/pgdump/${db}.pg_dump.tmp" >/dev/null
+    mv "${DUMPDIR}/${db}.pg_dump.tmp" "${DUMPDIR}/${db}.pg_dump"
+    podman rm -f -t 30 "${container}" >/dev/null
+}
+
+upgrade() {
+    local unit=$1 volume=$2 db=$3 user=$4 secretfile=$5
+    local version
+    version=$(pg-volume-version "${volume}")
+    if [[ ${version} == *legacy ]]; then
+        dump_legacy "${unit}" "${volume}" "${db}" "${user}" "${secretfile}" "${version% legacy}"
+    fi
+    if [[ -s "${DUMPDIR}/${db}.pg_dump" ]]; then
+        systemctl --user stop "${unit}"
+        pg-load-dump "${volume}" "${db}" "${user}" "${secretfile}" "${DUMPDIR}"
+        rm -f "${DUMPDIR}/${db}.pg_dump"
+        echo "${db}: dump loaded into PostgreSQL $(pg-volume-version "${volume}") (before: ${version})"
+    fi
+}
+
+upgrade arsnova-postgres-auth.service arsnova-postgres-auth arsnovaauth "${PG_AUTH_USER:-arsnovaauth}" postgres-auth.env
+upgrade arsnova-postgres-comment.service arsnova-postgres-comment arsnovacomment "${PG_COMMENT_USER:-arsnovacomment}" postgres-comment.env
+rmdir "${DUMPDIR}" 2>/dev/null || true
+# 95cleanup_images of the core removes PREV_POSTGRES_IMAGE; an old image this
+# script had to pull again (repeated update) is removed here
+if [[ ${LEGACY_IMAGE_13} != "${PREV_POSTGRES_IMAGE}" && ${LEGACY_IMAGE_13} != "${POSTGRES_IMAGE}" ]]; then
+    podman image rm --ignore "${LEGACY_IMAGE_13}" >/dev/null 2>&1 || true
+fi
