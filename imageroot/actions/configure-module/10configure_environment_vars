@@ -56,8 +56,10 @@ agent.set_env("SMTP_MANUAL_FROM", (data.get("smtp_from") or "").strip())
 # Self-registration toggle. The registered provider stays enabled (so existing
 # accounts keep logging in), but when registration is off we point its
 # allowed-email-domains at a sentinel that matches no real address, so the core
-# rejects every new sign-up. "*" allows anyone to register.
-allow_registration = bool(data.get("allow_registration", True))
+# rejects every new sign-up. "*" allows anyone to register. Without the field
+# the current setting stays (off on a new instance, see create-module).
+allow_registration = bool(data.get("allow_registration",
+                                   os.environ.get("REGISTERED_ALLOWED_DOMAINS") == "*"))
 agent.set_env(
     "REGISTERED_ALLOWED_DOMAINS",
     "*" if allow_registration else "ns8.registration.disabled",

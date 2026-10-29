@@ -16,6 +16,13 @@
 
 ### Changed
 
+- **Self-registration is off on a new installation.** Until an administrator
+  switches "Allow self-registration" on in the Settings page, nobody can create
+  an account from the login page (the registered provider gets the sentinel
+  domain `ns8.registration.disabled`, so existing accounts still log in).
+  Existing instances keep their setting; `configure-module` keeps the current
+  value when `allow_registration` is omitted. The Settings page warns while
+  self-registration is on.
 - **The bind password no longer leaves the module.** `get-configuration`
   returns `ldap_bind_password_set` instead of the password; an empty password
   field keeps the stored one.

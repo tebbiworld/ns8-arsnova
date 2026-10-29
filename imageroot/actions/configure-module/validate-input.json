@@ -38,7 +38,7 @@
         "allow_registration": {
             "type": "boolean",
             "title": "Allow self-registration",
-            "description": "Allow anyone to create a new account from the login page. Disable to keep strangers from signing up; existing and AD/LDAP logins keep working."
+            "description": "Allow anyone to create a new account from the login page. Off on a new instance; when omitted, the current setting stays. Existing and AD/LDAP logins work either way."
         },
         "smtp_host": {
             "type": "string",
