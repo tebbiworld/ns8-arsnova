@@ -6,6 +6,11 @@ Resource    api.resource
 *** Variables ***
 ${LDAP_CUSTOM}    "ldap_enabled":true,"ldap_title":"CI","ldap_source":"custom","ldap_url":"ldaps://ldap.ci.test:636","ldap_start_tls":false,"ldap_tls_verify":true,"ldap_schema":"ad","ldap_base_dn":"DC=ci,DC=test","ldap_bind_dn":"CN=svc,DC=ci,DC=test","ldap_user_attribute":"","ldap_group":"CN=arsnova,DC=ci,DC=test"
 ${BAD_TITLE}      "ldap_title":"CI\\nX=1"
+# directory login through Traefik; prints "<HTTP status> <seconds>" (000: no answer)
+${CURL_LOGIN}     curl -sk -o /dev/null -w '\%{http_code} \%{time_total}' -H 'Host: arsnova.ci.test' -H 'Content-Type: application/json' -d '{"loginId":"ci-user","password":"Ci-wrong-Pass1"}' https://127.0.0.1/api/auth/login/ldap
+${LDAP_LOGIN}     ${CURL_LOGIN} --max-time 90 || true
+${LDAP_PROBE}     ${CURL_LOGIN} --max-time 15 || true
+${SILENT_PORT}    16389
 ${BASE}           "host":"arsnova.ci.test","lets_encrypt":false,"http2https":true,"admin_email":"admin@ci.test","allow_registration":true,"smtp_host":"","smtp_from":""
 
 *** Test Cases ***
@@ -27,8 +32,10 @@ The core gets the directory settings
     Wait Until Keyword Succeeds    30 times    10 seconds    Core is active
     ${mode} =    Run on node    runagent -m ${module_id} stat -c %a ldap.env
     Should Be Equal As Strings    ${mode.strip()}    600
-    ${env} =    Run on node    runagent -m ${module_id} grep -E '^SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_(ENABLED|HOSTURL|USERSEARCHFILTER)=' ldap.env
+    ${env} =    Run on node    runagent -m ${module_id} grep -E '^SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_(ENABLED|HOSTURL|USERSEARCHFILTER|CONNECTTIMEOUT)=' ldap.env
     Should Contain    ${env}    ENABLED=true
+    # without it the provider list from the environment has timeout 0 (wait for TCP)
+    Should Contain    ${env}    CONNECTTIMEOUT=5000
     Should Contain    ${env}    HOSTURL=ldaps://ldap.ci.test:636/DC=ci,DC=test
     # nested groups count (LDAP_MATCHING_RULE_IN_CHAIN), disabled accounts do not
     Should Contain    ${env}    (memberOf:1.2.840.113556.1.4.1941:=CN=arsnova,DC=ci,DC=test)
@@ -42,6 +49,28 @@ Certificate check off pins the server certificate
     Wait Until Keyword Succeeds    30 times    10 seconds    Core is active
     ${java} =    Run on node    runagent -m ${module_id} grep -c disableEndpointIdentification ldap.env
     Should Be Equal As Integers    ${java.strip()}    1
+
+An unreachable server fails the login quickly
+    # 192.0.2.1 (TEST-NET-1) does not answer: the login must end after the
+    # connect timeout of 5 s, not with a gateway timeout (504) after 60 s.
+    # A network that rejects the address at once passes too (fail fast).
+    Configure    {${BASE},${LDAP_CUSTOM},"ldap_url":"ldaps://192.0.2.1:636","ldap_bind_password":""}
+    The core uses the directory server    ldaps://192.0.2.1:636/
+    Wait Until Keyword Succeeds    90 times    10 seconds    Directory login is answered
+    Login is refused within    0    30
+
+A server that accepts but does not answer fails the login quickly
+    # stands in for ldapproxy waiting for an unreachable domain controller:
+    # the read timeout (etc/jndi.properties, 10 s) ends the login
+    Put File    ${CURDIR}/scripts/silent_server.py    /root/silent_server.py    mode=0755
+    Run on node    systemd-run --unit=ci-silent-ldap /usr/bin/python3 /root/silent_server.py ${SILENT_PORT}
+    Configure    {${BASE},${LDAP_CUSTOM},"ldap_url":"ldap://host.containers.internal:${SILENT_PORT}","ldap_bind_password":""}
+    The core uses the directory server    ldap://host.containers.internal:${SILENT_PORT}/
+    ${mount} =    Run on node    runagent -m ${module_id} podman exec arsnova-backend-core cat /opt/java/openjdk/conf/jndi.properties
+    Should Contain    ${mount}    com.sun.jndi.ldap.read.timeout=10000
+    Wait Until Keyword Succeeds    90 times    10 seconds    Directory login is answered
+    Login is refused within    8    30
+    [Teardown]    Run on node    systemctl stop ci-silent-ldap.service || true; rm -f /root/silent_server.py
 
 ARSnova limits are refused
     Configuration is refused    {${BASE},${LDAP_CUSTOM},"ldap_url":"ldap://ldap.ci.test:389","ldap_start_tls":true,"ldap_bind_password":""}    start_tls_unsupported
@@ -74,6 +103,29 @@ Configuration is refused
 Core is active
     ${state} =    Run on node    runagent -m ${module_id} systemctl --user is-active arsnova-core.service
     Should Be Equal As Strings    ${state.strip()}    active
+
+Directory login is answered
+    # the core is up and offers the LDAP provider (not 502/503 while it starts)
+    ${result} =    Run on node    ${LDAP_PROBE}
+    Should Not Match Regexp    ${result}    ^(000|404|502|503)    login not answered yet: ${result}
+
+The core uses the directory server
+    [Documentation]    ldap.env enables the provider with this URL (a refusal
+    ...                must not come from a directory login that is off)
+    [Arguments]    ${url}
+    ${env} =    Run on node    runagent -m ${module_id} grep -E '^SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_(ENABLED|HOSTURL|CONNECTTIMEOUT)=' ldap.env
+    Should Contain    ${env}    ENABLED=true
+    Should Contain    ${env}    HOSTURL=${url}
+    Should Contain    ${env}    CONNECTTIMEOUT=5000
+
+Login is refused within
+    [Documentation]    A directory login with a wrong password gets 401
+    ...                after at least ${min} and less than ${max} seconds.
+    [Arguments]    ${min}    ${max}
+    ${result} =    Run on node    ${LDAP_LOGIN}
+    ${code}    ${seconds} =    Evaluate    $result.split()
+    Should Be Equal As Strings    ${code}    401    login answered ${result}
+    Should Be True    ${min} <= float($seconds) < ${max}    login took ${seconds} s
 
 Web client and API are served
     ${out} =    Run on node    curl -fsSk -H 'Host: arsnova.ci.test' https://127.0.0.1/

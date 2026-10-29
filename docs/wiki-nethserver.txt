@@ -63,6 +63,7 @@ Optionally only the members of **one group** may log in. For a user domain the g
 Things to know:
   * Use %%ldaps://%% for a server of your own. ARSnova does not support StartTLS.
   * With the certificate check **on**, the server certificate must be signed by a public CA and match the host name. With the check **off**, the module trusts the certificate the server presents at start, without the host name check. NethServer's Samba presents a self-signed certificate: turn the check off for it, or better use it as a user domain.
+  * If the directory server cannot be reached or does not answer, a directory login is refused after about 5 to 10 seconds (fixed values).
   * With a user domain, the module reaches the node's ldapproxy through a mapping of the node loopback into its container network. While that mapping exists, the ARSnova containers can also reach other services that listen on the node loopback. Switching to or away from a user domain restarts the whole module once.
 
 ====Administrator account====
