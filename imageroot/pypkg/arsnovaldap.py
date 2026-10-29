@@ -60,6 +60,13 @@ GROUP_CACHE = "ldap-group.cache"
 TRUSTSTORE = "/etc/ssl/ad-truststore.p12"  # path inside the core container
 PREFIX = "SECURITY_AUTHENTICATIONPROVIDERS_LDAP_0_"
 TIMEOUT = 10
+# Connect timeout of the core's LDAP provider in milliseconds. defaults.yml of
+# the core sets connect-timeout: 5000 for its example provider, but the
+# provider list set by environment variables replaces that list as a whole, so
+# without this value the timeout is 0: a server that does not answer keeps
+# the login waiting for the TCP timeout of the system, and the gateway answers
+# 504 after 60 s. ARSnova 3.13 has no read timeout setting.
+CONNECT_TIMEOUT_MS = 5000
 # keys of the module environment that 1.3.0 no longer uses
 OBSOLETE_KEYS = ("LDAP_HOST", "LDAP_PORT")
 # set by the migration of pre-1.3.0 settings: keep their user filter
@@ -399,6 +406,7 @@ def render():
         f"{PREFIX}USERSEARCHFILTER={user_filter}",
         f"{PREFIX}MANAGERUSERDN={v['LDAP_BIND_DN']}",
         f"{PREFIX}MANAGERPASSWORD={v['LDAP_BIND_PASSWORD']}",
+        f"{PREFIX}CONNECTTIMEOUT={CONNECT_TIMEOUT_MS}",
         f"{PREFIX}ALLOWEDROLES_0=MODERATOR",
         f"{PREFIX}ALLOWEDROLES_1=PARTICIPANT",
     ]
