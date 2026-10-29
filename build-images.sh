@@ -24,7 +24,7 @@ reponame="arsnova"
 #
 #   docker.io/particify/couchdb:3.5                  -> COUCHDB_IMAGE
 #   docker.io/library/postgres:13.8-alpine           -> POSTGRES_IMAGE
-#   docker.io/particify/rabbitmq-stomp:3.11-alpine   -> RABBITMQ_STOMP_IMAGE
+#   docker.io/particify/rabbitmq-stomp:4.3-alpine    -> RABBITMQ_STOMP_IMAGE
 #   docker.io/particify/arsnova-server-authz:3.13    -> ARSNOVA_SERVER_AUTHZ_IMAGE
 #   docker.io/particify/arsnova-server-core:3.13     -> ARSNOVA_SERVER_CORE_IMAGE
 #   docker.io/particify/arsnova-server-comments:3.13 -> ARSNOVA_SERVER_COMMENTS_IMAGE
@@ -35,13 +35,16 @@ reponame="arsnova"
 #   docker.io/particify/arsnova-proxy:3.13           -> ARSNOVA_PROXY_IMAGE
 # Fully pinned references: dated 3.13 builds where Particify publishes them,
 # digests for the images that only have rolling tags (proxy 3.13, couchdb 3.5,
-# rabbitmq-stomp 3.11-alpine).
+# rabbitmq-stomp 4.3-alpine).
 runtime_images=(
     # particify/couchdb:3.5 (CouchDB 3.5.2), the version of Particify's own
     # 3.13 compose file; CouchDB 3.x upgrades its data files in place
     "docker.io/particify/couchdb@sha256:12486b4e09af3d37598bacae7d945c7d911370b6a3f027516979af0e5fe31014"
     "docker.io/library/postgres:13.8-alpine"
-    "docker.io/particify/rabbitmq-stomp@sha256:411565bb5c984c65d3325ae8d12594004b4c304b93478d3710f444841ad99239"
+    # particify/rabbitmq-stomp:4.3-alpine (RabbitMQ 4.3.1), as in Particify's
+    # compose file for 3.13; update-module.d/10reset_rabbitmq empties the
+    # broker volume when this image changes
+    "docker.io/particify/rabbitmq-stomp@sha256:01451bf27e28206d617912a1f14055f89e9f0253b7cd8bfa0b7ac8d911c60617"
     "docker.io/particify/arsnova-server-authz:3.13.20260613"
     "docker.io/particify/arsnova-server-core:3.13.20260613"
     "docker.io/particify/arsnova-server-comments:3.13.20260613"
