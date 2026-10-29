@@ -192,7 +192,10 @@ LDAP, which only knows a user search filter; therefore:
 - no group restriction for OpenLDAP (rfc2307) directories: their groups list
   `memberUid` values, which a user filter cannot test;
 - a group given by name is resolved to its DN when the core starts; if the
-  directory is unreachable then, the last known DN is used.
+  directory is unreachable then, the last known DN is used;
+- the core waits at most 5 s for a connection to the directory (fixed
+  value); a login against a server that does not answer is refused after
+  that time. ARSnova has no setting for a read timeout.
 
 With the certificate check **on**, the core trusts the public CAs of its Java
 runtime and checks the host name. With the check **off**, it trusts the
