@@ -34,7 +34,9 @@ A foreign browser Origin is still refused
 SockJS info status is
     [Arguments]    ${origin}    ${expected}
     ${port} =    Run on node    runagent -m ${module_id} printenv TCP_PORT
+    # \%{http_code} is escaped: a bare %{...} is Robot's environment-variable
+    # syntax and would make Robot fail before curl ever runs.
     ${code} =    Run on node
-    ...    curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: ${PUBLIC_HOST}' -H 'Origin: ${origin}' http://127.0.0.1:${port.strip()}/api/ws/info
+    ...    curl -s -o /dev/null -w '\%{http_code}' --max-time 10 -H 'Host: ${PUBLIC_HOST}' -H 'Origin: ${origin}' http://127.0.0.1:${port.strip()}/api/ws/info
     Should Be Equal As Strings    ${code.strip()}    ${expected}
     ...    SockJS /api/ws/info with Origin ${origin} returned ${code.strip()}, expected ${expected}
