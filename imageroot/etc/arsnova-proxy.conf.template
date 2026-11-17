@@ -1,0 +1,95 @@
+# nginx front-proxy config for this NS8 module -- an adapted copy of the
+# arsnova-proxy image template (docker.io/particify/arsnova-proxy:3.13, the
+# digest pinned in build-images.sh). Mounted over
+# /etc/nginx/templates/arsnova.conf.template and rendered by the image's
+# envsubst entrypoint at container start.
+#
+# WHY THIS COPY EXISTS: the websocket gateway registers its STOMP endpoint as
+# Spring SockJS, which enforces a same-origin check on the handshake. Behind
+# Traefik, TLS is terminated at the edge and the request reaches this proxy
+# over plain http, so the gateway would reconstruct an http origin and reject
+# the browser's https Origin with 403 (all live/STOMP features, incl. focus
+# mode, then fail silently while plain HTTP still works). The upstream
+# template derives X-Forwarded-Proto/-Port from whatever the edge sent; that
+# is not reliable here. We instead pin them to this instance's known public
+# scheme/port (PUBLIC_FORWARDED_PROTO/PUBLIC_FORWARDED_PORT, written by
+# bin/discover-proxy-scheme) so the gateway's origin reconstruction always
+# matches the public URL.
+#
+# MAINTENANCE: keep in sync with the upstream template when the pinned proxy
+# image is bumped; only the two X-Forwarded-Proto/-Port lines in the /api/ and
+# /api/ws/ locations differ from upstream.
+#
+upstream gateway {
+  server arsnova-http-gateway:8080;
+}
+
+upstream websocket {
+  server arsnova-ws-gateway:8080;
+}
+
+server {
+  listen $NGINX_LISTEN default_server;
+  listen [::]:$NGINX_LISTEN default_server;
+  server_name $ARSNOVA_HOSTNAME _;
+  $NGINX_TLS_INCLUDE conf.d/${ARSNOVA_HOSTNAME}_tls.conf.include;
+  $NGINX_CSP_FRAME_ANCESTORS
+
+  # Modern client
+  location / {
+    proxy_pass http://arsnova-web;
+    proxy_http_version 1.1;
+    gzip on;
+    gzip_types application/javascript text/css image/svg+xml;
+    gzip_vary on;
+  }
+
+  # Public REST API
+  location /api/ {
+    proxy_pass http://gateway/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $PUBLIC_FORWARDED_PROTO;
+    proxy_set_header X-Forwarded-Port $PUBLIC_FORWARDED_PORT;
+  }
+
+  # Public WebSocket Endpoint
+  location /api/ws/ {
+    proxy_pass http://websocket/ws/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $PUBLIC_FORWARDED_PROTO;
+    proxy_set_header X-Forwarded-Port $PUBLIC_FORWARDED_PORT;
+  }
+
+  # Include additional route configs if available
+  include conf.d/*.app-routes.conf.include;
+}
+
+# Set server's scheme as fallback if request was not already forwarded.
+map $http_x_forwarded_for $forwarded_scheme_fallback {
+  default '';
+  ''      $scheme;
+}
+
+# Use existing header or fallback.
+map $http_x_forwarded_proto $forwarded_scheme {
+  default $http_x_forwarded_proto;
+  ''      $forwarded_scheme_fallback;
+}
+
+# Set request's port as fallback if request was not already forwarded.
+map $http_x_forwarded_for $forwarded_port_fallback {
+  default '';
+  ''      $request_port;
+}
+
+# Use existing header or fallback.
+map $http_x_forwarded_port $forwarded_port {
+  default $http_x_forwarded_port;
+  ''      $forwarded_port_fallback;
+}
