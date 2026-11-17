@@ -17,8 +17,9 @@
 # is exactly the public scheme the rest of the module already uses. Falls back
 # to the Traefik TLS settings, and finally to https -- the usual case for a
 # Traefik-fronted instance -- so the rendered nginx config is always valid
-# (an empty value would break the envsubst'd proxy_set_header line). Never
-# fails the start.
+# (an empty value would break the envsubst'd proxy_set_header line). Scheme
+# detection itself cannot fail the start; only an unwritable state directory
+# would, and failing the start is then preferable to rendering a broken config.
 
 import os
 import sys

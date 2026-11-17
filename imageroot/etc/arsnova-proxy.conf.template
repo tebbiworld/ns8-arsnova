@@ -18,7 +18,9 @@
 #
 # MAINTENANCE: keep in sync with the upstream template when the pinned proxy
 # image is bumped; only the two X-Forwarded-Proto/-Port lines in the /api/ and
-# /api/ws/ locations differ from upstream.
+# /api/ws/ locations differ from upstream. The $forwarded_scheme/$forwarded_port
+# map blocks at the end are consequently unused here, but are kept verbatim to
+# minimise the diff against upstream on the next sync.
 #
 upstream gateway {
   server arsnova-http-gateway:8080;

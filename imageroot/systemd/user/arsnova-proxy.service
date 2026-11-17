@@ -33,7 +33,8 @@ TimeoutStartSec=120
 TimeoutStopSec=70
 ExecStartPre=/bin/rm -f %t/arsnova-proxy.pid %t/arsnova-proxy.ctr-id
 # Write state/proxy.env (PUBLIC_FORWARDED_PROTO/PORT) from this instance's
-# public scheme, read again below for --env-file. Never fails the start.
+# public scheme, read again below for --env-file. Scheme detection cannot fail
+# the start; an unwritable state dir would, which beats a broken config.
 ExecStartPre=/usr/local/bin/runagent discover-proxy-scheme
 ExecStart=/usr/bin/podman run \
     --conmon-pidfile %t/arsnova-proxy.pid \
