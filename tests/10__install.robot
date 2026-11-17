@@ -71,6 +71,14 @@ The broker runs RabbitMQ 4
 
 Manual LDAP settings of the previous release are migrated
     Skip If    '${SCENARIO}' != 'update'    scenario is ${SCENARIO}
+    # Only an upgrade from a pre-1.3.0 release carries manual LDAP settings
+    # without an ldap_source to migrate. Since 1.3.0 the module stores
+    # ldap_source itself, so when the CI updates from 1.3.0 or later (the
+    # default once 1.3.0 was published) there is nothing to migrate and these
+    # assertions no longer apply.
+    ${from_tag} =    Evaluate    $UPDATE_FROM.rsplit(":", 1)[-1]
+    ${from_legacy} =    Evaluate    len($from_tag.split(".")) == 3 and all(p.isdigit() for p in $from_tag.split(".")) and tuple(int(n) for n in $from_tag.split(".")) < (1, 3, 0)
+    Skip If    not ${from_legacy}    previous release '${from_tag}' already stores ldap_source; nothing to migrate
     ${cfg} =    Run task    module/${module_id}/get-configuration    {}
     Should Be Equal    ${cfg['ldap_source']}    custom
     Should Be Equal    ${cfg['ldap_url']}    ldaps://ldap.ci.test:636
