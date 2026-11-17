@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.3.1 — unreleased
+
+### Fixed
+
+- **Live/focus features now work behind TLS.** The presentation focus mode and
+  all other live updates (results, comments, feedback) rely on a STOMP
+  WebSocket to the gateway. The gateway registers its endpoint as Spring
+  SockJS, which runs a same-origin check on the handshake; behind Traefik the
+  request reaches the front proxy over plain http, so the gateway reconstructed
+  an http origin and rejected the browser's https `Origin` with `403 Invalid
+  CORS request`. Participants then stayed on the room welcome page in focus
+  mode, while answering (plain HTTP) kept working. The front proxy now pins
+  `X-Forwarded-Proto`/`X-Forwarded-Port` to the instance's known public
+  scheme/port (`bin/discover-proxy-scheme` → `state/proxy.env`, used by the
+  adapted template `etc/arsnova-proxy.conf.template`), so the gateway's origin
+  reconstruction matches the public URL. Foreign origins are still rejected.
+  No settings change; existing instances get the fix on update (the proxy is
+  restarted by `update-module.d`).
+- Test `tests/50__focus_websocket.robot`: the SockJS handshake is accepted for
+  the instance's own browser `Origin` and refused for a foreign one.
+
 ## 1.3.0 — 2026-10-29
 
 ### Added

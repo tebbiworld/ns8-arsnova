@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 tebbi
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# ExecStartPre of arsnova-proxy (through runagent): write state/proxy.env with
+# the public scheme/port this instance is reached on, so the front proxy can
+# pin X-Forwarded-Proto/-Port towards the websocket gateway (see
+# etc/arsnova-proxy.conf.template for why). The gateway's SockJS same-origin
+# check only accepts the browser's Origin when it reconstructs the same public
+# origin; behind Traefik the request arrives over plain http, so the scheme has
+# to be asserted here from what the module knows, not from the edge headers.
+#
+# Derived from ARSNOVA_ROOT_URL (scheme://host, set by configure-module); this
+# is exactly the public scheme the rest of the module already uses. Falls back
+# to the Traefik TLS settings, and finally to https -- the usual case for a
+# Traefik-fronted instance -- so the rendered nginx config is always valid
+# (an empty value would break the envsubst'd proxy_set_header line). Scheme
+# detection itself cannot fail the start; only an unwritable state directory
+# would, and failing the start is then preferable to rendering a broken config.
+
+import os
+import sys
+
+import agent
+
+
+def _truthy(value):
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _public_scheme():
+    root_url = os.environ.get("ARSNOVA_ROOT_URL", "")
+    scheme = root_url.split("://", 1)[0].strip().lower() if "://" in root_url else ""
+    if scheme in ("http", "https"):
+        return scheme
+    # ARSNOVA_ROOT_URL missing/odd: reuse the scheme decision of configure-module
+    # (https when a certificate is requested or http is redirected to https).
+    if _truthy(os.environ.get("TRAEFIK_LETS_ENCRYPT")) or _truthy(os.environ.get("TRAEFIK_HTTP2HTTPS")):
+        return "https"
+    if "TRAEFIK_LETS_ENCRYPT" in os.environ or "TRAEFIK_HTTP2HTTPS" in os.environ:
+        return "http"
+    print(agent.SD_WARNING + "discover-proxy-scheme: no scheme hint found, assuming https",
+          file=sys.stderr)
+    return "https"
+
+
+def main():
+    try:
+        scheme = _public_scheme()
+    except Exception as exc:  # the proxy must start anyway
+        print(agent.SD_ERR + f"discover-proxy-scheme: {type(exc).__name__}: {exc}; assuming https",
+              file=sys.stderr)
+        scheme = "https"
+    port = "443" if scheme == "https" else "80"
+    # cwd is the agent state directory (runagent), as for discover-ldap.
+    with open("proxy.env.tmp", "w") as fp:
+        fp.write(f"PUBLIC_FORWARDED_PROTO={scheme}\n")
+        fp.write(f"PUBLIC_FORWARDED_PORT={port}\n")
+    os.replace("proxy.env.tmp", "proxy.env")
+
+
+if __name__ == "__main__":
+    main()

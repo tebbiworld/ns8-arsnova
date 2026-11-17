@@ -37,4 +37,8 @@ if arsnovaldap.configure_host_loopback():
     subprocess.run(["systemctl", "--user", "stop"] + UNITS, check=True)
     subprocess.run(["systemctl", "--user", "start"] + UNITS, check=True)
 else:
-    subprocess.run(["systemctl", "--user", "restart", "arsnova.service", "arsnova-core.service"], check=True)
+    # arsnova-proxy: its unit + config template may have changed on update
+    # (e.g. the X-Forwarded-Proto/-Port pinning); restart it so the new config
+    # and state/proxy.env (bin/discover-proxy-scheme) take effect.
+    subprocess.run(["systemctl", "--user", "restart",
+                    "arsnova.service", "arsnova-core.service", "arsnova-proxy.service"], check=True)
