@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.2 — 2026-11-20
+
+### Security
+
+- **PostgreSQL 18.6 → 18.7 (Alpine).** PostgreSQL's 2026-11-12 coordinated
+  security release fixes 52 CVEs, including CVE-2026-116331 (remote code
+  execution for any login role) and CVE-2026-18447 / CVE-2026-6460
+  (type-confusion arbitrary code execution). In-place minor upgrade within
+  major 18 — no dump/restore.
+- **Refreshed the pinned digests of CouchDB 3.5, RabbitMQ 4.3-alpine and
+  arsnova-proxy 3.13** to their current upstream rebuilds, which pick up
+  base-image (Debian / Alpine / nginx) security patches. Same tags, in place;
+  `update-module.d/10reset_rabbitmq` empties the ephemeral broker on the image
+  change and CouchDB patches its data files in place.
+
 ## 1.3.1 — 2026-11-17
 
 ### Fixed

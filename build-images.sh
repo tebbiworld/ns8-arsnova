@@ -23,7 +23,7 @@ reponame="arsnova"
 # STOMP broker, the Angular web client and the front reverse proxy.
 #
 #   docker.io/particify/couchdb:3.5                  -> COUCHDB_IMAGE
-#   docker.io/library/postgres:18.6-alpine           -> POSTGRES_IMAGE
+#   docker.io/library/postgres:18.7-alpine           -> POSTGRES_IMAGE
 #   docker.io/particify/rabbitmq-stomp:4.3-alpine    -> RABBITMQ_STOMP_IMAGE
 #   docker.io/particify/arsnova-server-authz:3.13    -> ARSNOVA_SERVER_AUTHZ_IMAGE
 #   docker.io/particify/arsnova-server-core:3.13     -> ARSNOVA_SERVER_CORE_IMAGE
@@ -39,14 +39,14 @@ reponame="arsnova"
 runtime_images=(
     # particify/couchdb:3.5 (CouchDB 3.5.2), the version of Particify's own
     # 3.13 compose file; CouchDB 3.x upgrades its data files in place
-    "docker.io/particify/couchdb@sha256:12486b4e09af3d37598bacae7d945c7d911370b6a3f027516979af0e5fe31014"
+    "docker.io/particify/couchdb@sha256:683c26a7d8ce6f44cb858e2ca4da82a4b5af90c1227887711f756098840ac397"
     # PostgreSQL 18 (13 is out of support): cluster in /var/lib/postgresql/18/docker,
     # converted from 13 by update-module.d/20upgrade_postgres
-    "docker.io/library/postgres:18.6-alpine"
+    "docker.io/library/postgres:18.7-alpine"
     # particify/rabbitmq-stomp:4.3-alpine (RabbitMQ 4.3.1), as in Particify's
     # compose file for 3.13; update-module.d/10reset_rabbitmq empties the
     # broker volume when this image changes
-    "docker.io/particify/rabbitmq-stomp@sha256:01451bf27e28206d617912a1f14055f89e9f0253b7cd8bfa0b7ac8d911c60617"
+    "docker.io/particify/rabbitmq-stomp@sha256:c57eb6705ed4a7764e2f5f4738d085d12c582a071dcfc8152629066230d7c6ba"
     "docker.io/particify/arsnova-server-authz:3.13.20260613"
     "docker.io/particify/arsnova-server-core:3.13.20260613"
     "docker.io/particify/arsnova-server-comments:3.13.20260613"
@@ -54,7 +54,7 @@ runtime_images=(
     "docker.io/particify/arsnova-server-gateway:3.13.20260613"
     "docker.io/particify/arsnova-server-formatting:3.13.20260613"
     "docker.io/particify/arsnova-webclient:3.13.20260613"
-    "docker.io/particify/arsnova-proxy@sha256:f431909169b6306f5ace6d876944a94a3747b594f229bc3e956f6b2e7382c0bc"
+    "docker.io/particify/arsnova-proxy@sha256:bc436b0252c695d949fae1c63a6219920e7ae093c4508118cc284abec8f4f40d"
 )
 
 # Create a new empty container image
